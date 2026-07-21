@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Derived embedding cache — content-addressed, regenerates from source.
+# Committed result snapshots (JSON tables) live in results/ and are NOT ignored.
+results/emb/
+
+# OS
+.DS_Store
