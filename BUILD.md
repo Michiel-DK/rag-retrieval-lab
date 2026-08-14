@@ -19,8 +19,8 @@ A prediction written afterwards is a story, not a prediction.
 | `ragexp/metrics.py` | ✅ done, smoke-tested — recall@k, nDCG@k, paired + independent bootstrap |
 | `ragexp/data.py` | ✅ done, smoke-tested — NFCorpus loader (3633 docs / 323 queries / 12334 graded judgments) |
 | `README.md` | ✅ predictions written, marked not-yet-run |
-| `ragexp/embed.py` | ⬜ todo |
-| `ragexp/retrieve.py` | ⬜ todo |
+| `ragexp/embed.py` | ✅ done (`6608a3a`) — `Embedder.encode()` with content-addressed cache; NFCorpus matrix + all 323 query vectors already cached under `results/emb/`. ⚠️ never smoke-tested |
+| `ragexp/retrieve.py` | ✅ done (`6608a3a`) — `dense()`, `build_bm25()`, `bm25()`, `rrf()`, `pool_doc_matrix()`. ⚠️ never smoke-tested; note `rrf()` fuses full-length rankings, not truncated candidate lists — decide before nb 03 |
 | `ragexp/rerank.py` | ⬜ todo |
 | notebooks 01–06 | ⬜ todo |
 | `LESSONS.md` | ⬜ todo (fills in as notebooks resolve) |
