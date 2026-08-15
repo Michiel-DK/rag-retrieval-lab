@@ -127,7 +127,7 @@ class ZerankReranker:
     def __init__(
         self,
         model_name: str = "zeroentropy/zerank-1-small",
-        batch_size: int = 4,
+        batch_size: int = 8,
         max_chars: int = 1200,
     ):
         self.model_name = model_name
@@ -143,11 +143,22 @@ class ZerankReranker:
         return self._model
 
     def score(self, query: str, texts: Sequence[str]) -> List[float]:
+        import torch
+
         model = self._load()
         pairs = [(query, t[: self.max_chars]) for t in texts]
         out: List[float] = []
-        for i in range(0, len(pairs), self.batch_size):
-            out.extend(float(s) for s in model.predict(pairs[i : i + self.batch_size]))
+        # inference_mode matters twice over: the model's custom predict()
+        # doesn't disable autograd itself, so without this every forward
+        # builds a graph — ~2.6x slower and enough extra memory that macOS
+        # kills the process mid-sweep.
+        with torch.inference_mode():
+            for i in range(0, len(pairs), self.batch_size):
+                out.extend(
+                    float(s) for s in model.predict(pairs[i : i + self.batch_size])
+                )
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
         return out
 
 
