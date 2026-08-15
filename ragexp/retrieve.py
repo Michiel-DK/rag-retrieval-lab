@@ -64,7 +64,11 @@ def bm25(query: str, index, doc_ids: Sequence[str]) -> List[str]:
 # ── Reciprocal Rank Fusion ────────────────────────────────────────────────
 
 
-def rrf(rankings: Sequence[Sequence[str]], k: int = 60) -> List[str]:
+def rrf(
+    rankings: Sequence[Sequence[str]],
+    k: int = 60,
+    depth: Optional[int] = None,
+) -> List[str]:
     """Fuse multiple ranked lists by Reciprocal Rank Fusion.
 
     Each doc scores sum(1 / (k + rank)) across the lists it appears in
@@ -72,9 +76,17 @@ def rrf(rankings: Sequence[Sequence[str]], k: int = 60) -> List[str]:
     nb 03 interrogates — it's a *rank* fusion, so it discards the score
     magnitudes each retriever produced, which is precisely the property
     under suspicion.
+
+    ``depth`` truncates each input list before fusing. ``None`` fuses the
+    full rankings (the original RRF formulation); production systems fuse
+    top-k candidate lists instead, where a doc outside one retriever's
+    depth gets zero contribution from it. The two differ near the tail —
+    nb 03 measures by how much rather than assuming.
     """
     scores: Dict[str, float] = {}
     for ranking in rankings:
+        if depth is not None:
+            ranking = ranking[:depth]
         for rank, doc_id in enumerate(ranking, start=1):
             scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
     return sorted(scores, key=lambda d: -scores[d])
