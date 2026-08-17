@@ -12,20 +12,26 @@ A prediction written afterwards is a story, not a prediction.
 
 ---
 
-## Current state (2026-07-21)
+## Current state (2026-08-17) — stop-and-ship reached
 
 | component | status |
 |---|---|
-| `ragexp/metrics.py` | ✅ done, smoke-tested — recall@k, nDCG@k, paired + independent bootstrap |
-| `ragexp/data.py` | ✅ done, smoke-tested — NFCorpus loader (3633 docs / 323 queries / 12334 graded judgments) |
-| `README.md` | ✅ predictions written, marked not-yet-run |
-| `ragexp/embed.py` | ✅ done (`6608a3a`) — `Embedder.encode()` with content-addressed cache; NFCorpus matrix + all 323 query vectors already cached under `results/emb/`. ⚠️ never smoke-tested |
-| `ragexp/retrieve.py` | ✅ done (`6608a3a`) — `dense()`, `build_bm25()`, `bm25()`, `rrf()`, `pool_doc_matrix()`. ⚠️ never smoke-tested; note `rrf()` fuses full-length rankings, not truncated candidate lists — decide before nb 03 |
-| `ragexp/rerank.py` | ⬜ todo |
-| notebooks 01–06 | ⬜ todo |
-| `LESSONS.md` | ⬜ todo (fills in as notebooks resolve) |
+| `ragexp/metrics.py` | ✅ done, unit-tested |
+| `ragexp/data.py` | ✅ done, tested (3633 docs / 323 queries / 12334 judgments) |
+| `ragexp/embed.py` | ✅ done, tested — content-addressed cache under `results/emb/` |
+| `ragexp/retrieve.py` | ✅ done, tested — `rrf()` grew a `depth` param; nb 03 resolved the open question empirically (**convention: depth=1000**, lossless vs full-ranking fusion at scored ks) |
+| `ragexp/runs.py` | ✅ done, tested — per-query score persistence to `results/scores/` |
+| `ragexp/rerank.py` | ✅ done, tested — LLM judge runs on **headless Claude Code** (`claude -p`, subscription auth, no API key) + `zerank-1-small` (needs `torch.inference_mode` on MPS); sweeps checkpointed to `results/rerank/` and **committed**, so notebooks reproduce with no LLM/GPU |
+| test suite | ✅ 46 tests (`pytest -q`; integration marks need local HF caches) |
+| nb 01 `the-ruler` | ✅ run — zero-poisoning understates 40%; paired p≈0 where independent CIs overlap |
+| nb 02 `dense-baseline` | ✅ run — nDCG@10 **0.3167**, recall@10 0.155, recall@50 0.251 |
+| nb 03 `lexical-and-fusion` | ✅ prediction resolved — BM25 **loses** to dense everywhere; **RRF nulls vs dense** (source-system null transferred); fusion only beats the weaker parent |
+| nb 04 `reranking` | ✅ prediction held — nDCG@10 0.317→**0.405** (LLM judge, p≈0) / 0.388 (zerank); **recall@50 frozen bit-for-bit** (self-check passed); judge-grading-own-homework demo: nDCG=1.0000 vs own labels, 0.405 vs human |
+| nb 05 `pooling-vs-summary` | ⬜ todo |
+| nb 06 `learning-to-rank` | ⬜ todo — ⚠️ verify MSLR-WEB10K license before publishing derived numbers |
+| `LESSONS.md` + predictions→results table | ⬜ todo — draft rows already sit in each notebook's closing cell |
 
-Env: `pyenv` virtualenv `rag-retrieval-lab` (3.12.9). Deps installed. Not git-inited yet.
+Env: `pyenv` virtualenv `rag-retrieval-lab` (3.12.9). Repo private on GitHub; flip public + secret-scan only after the deliverable lands.
 
 ---
 

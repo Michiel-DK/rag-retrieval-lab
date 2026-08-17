@@ -33,7 +33,8 @@ abstracts. Some mechanisms carry over, some don't, and the difference is the les
   original null may have been a fact about that corpus, not about RRF. (Notebook 03 —
   prediction: genuinely unsure, and that's the honest answer)
 
-Every prediction below is a prediction. None of them are results yet.
+The predictions for notebooks 03 and 04 have now **resolved** — the notebooks carry
+the numbers and the readings. Notebooks 05 and 06's predictions are still open.
 
 ## The dataset
 
@@ -55,14 +56,14 @@ and LTR is impossible. Picking the dataset is part of the method, so it gets a t
 Each one: a concept, a **prediction with a mechanism**, an experiment, and whatever
 actually happened. In order.
 
-| # | Notebook | Concept | Prediction (not yet run) |
-|---|---|---|---|
-| 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction — this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" |
-| 02 | `dense-baseline` | embed, rank by cosine | *No prediction — this is the bar.* |
-| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open |
-| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@k doesn't move.** Reranking reorders a fixed pool — it physically cannot change *which* docs are in the top-k |
-| 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls** — same encoder, nothing to align |
-| 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART wins.** MSLR is LTR's home benchmark. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but that was LLM-generated labels on a different corpus — worth testing whether the difference is the labels |
+| # | Notebook | Concept | Prediction (as pre-registered) | Outcome |
+|---|---|---|---|---|
+| 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction — this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" | ✅ run — both demos land (zero-poisoning understates 40%; paired p≈0 where independent CIs overlap) |
+| 02 | `dense-baseline` | embed, rank by cosine | *No prediction — this is the bar.* | ✅ run — nDCG@10 0.317; per-query scores committed |
+| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere; **RRF nulls vs dense** — the source system's null transferred. Fusion only beats the weaker parent |
+| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@k doesn't move.** Reranking reorders a fixed pool — it physically cannot change *which* docs are in the top-k | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit. Bonus: judge grading its own homework scores a meaningless 1.0 |
+| 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls** — same encoder, nothing to align | ⬜ open |
+| 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART wins.** MSLR is LTR's home benchmark. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but that was LLM-generated labels on a different corpus — worth testing whether the difference is the labels | ⬜ open |
 
 ### The thread running through all of them
 
@@ -96,13 +97,15 @@ its outputs are committed to `results/`, so everything downstream reproduces for
 ragexp/          the library — importable, unit-testable, no notebook magic
   metrics.py     recall@k, nDCG@k, paired bootstrap        [done]
   data.py        NFCorpus loader                            [done]
-  embed.py       sentence-transformers wrapper              [todo]
-  retrieve.py    dense / bm25 / rrf / pooling               [todo]
-  rerank.py      LLM judge + off-the-shelf reranker         [todo]
-notebooks/       the teaching layer — narrative, plots, lessons
+  embed.py       sentence-transformers wrapper              [done]
+  retrieve.py    dense / bm25 / rrf / pooling               [done]
+  runs.py        per-query scoring + committed score files  [done]
+  rerank.py      LLM judge + off-the-shelf reranker         [done]
+notebooks/       the teaching layer — narrative, plots, lessons (01–04 done)
 experiments/     scripts that produce the committed numbers
 results/         committed snapshots (so notebooks don't need to re-run everything)
-LESSONS.md       every experiment: what / number / verdict / lesson
+tests/           pytest suite (46 tests; `-m integration` needs local HF caches)
+LESSONS.md       every experiment: what / number / verdict / lesson  [todo]
 ```
 
 Logic lives in `ragexp/`, not in notebook cells. Notebooks import it. That way the
@@ -110,4 +113,10 @@ claims are testable and the notebooks stay readable.
 
 ## Status
 
-Scaffold. `metrics.py` and `data.py` are done and smoke-tested; the rest is stubs.
+Notebooks 01–04 — the stop-and-ship artifact — are done: library tested, notebooks
+executed with outputs committed, and both open predictions resolved (03: RRF nulls
+against dense; 04: nDCG rises while recall@50 stays frozen, as it structurally must).
+Notebook 04's LLM-judge grades and zerank scores are committed under
+`results/rerank/`, so everything reproduces without an API key or a GPU.
+
+Remaining: notebooks 05–06, then `LESSONS.md` with the predictions→results table.
