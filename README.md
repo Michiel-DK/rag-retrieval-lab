@@ -105,7 +105,7 @@ notebooks/       the teaching layer — narrative, plots, lessons (01–04 done)
 experiments/     scripts that produce the committed numbers
 results/         committed snapshots (so notebooks don't need to re-run everything)
 tests/           pytest suite (46 tests; `-m integration` needs local HF caches)
-LESSONS.md       every experiment: what / number / verdict / lesson  [todo]
+LESSONS.md       every experiment: what / number / verdict / lesson  [done]
 ```
 
 Logic lives in `ragexp/`, not in notebook cells. Notebooks import it. That way the
@@ -119,4 +119,4 @@ against dense; 04: nDCG rises while recall@50 stays frozen, as it structurally m
 Notebook 04's LLM-judge grades and zerank scores are committed under
 `results/rerank/`, so everything reproduces without an API key or a GPU.
 
-Remaining: notebooks 05–06, then `LESSONS.md` with the predictions→results table.
+Remaining: notebooks 05–06 (optional depth). `LESSONS.md` and the predictions→results table are in place.

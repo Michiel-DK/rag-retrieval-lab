@@ -29,7 +29,7 @@ A prediction written afterwards is a story, not a prediction.
 | nb 04 `reranking` | ✅ prediction held — nDCG@10 0.317→**0.405** (LLM judge, p≈0) / 0.388 (zerank); **recall@50 frozen bit-for-bit** (self-check passed); judge-grading-own-homework demo: nDCG=1.0000 vs own labels, 0.405 vs human |
 | nb 05 `pooling-vs-summary` | ⬜ todo |
 | nb 06 `learning-to-rank` | ⬜ todo — ⚠️ verify MSLR-WEB10K license before publishing derived numbers |
-| `LESSONS.md` + predictions→results table | ⬜ todo — draft rows already sit in each notebook's closing cell |
+| `LESSONS.md` + predictions→results table | ✅ done 2026-08-19 — `LESSONS.md` written from the notebooks' closing cells, all means recomputed from `results/scores/*.json` (n=323); predictions→outcomes table lives in both README.md and LESSONS.md |
 
 Env: `pyenv` virtualenv `rag-retrieval-lab` (3.12.9). Repo private on GitHub; flip public + secret-scan only after the deliverable lands.
 
