@@ -1,6 +1,7 @@
 # rag-retrieval-lab
 
 **Retrieval methods, explained by running them — predictions written down first.**
+**The case with receipts (frozen write-up): [`SHOWCASE.md`](SHOWCASE.md).**
 
 Every RAG tutorial shows you hybrid search, RRF fusion, and an LLM reranker, then tells
 you they help. This repo runs each one on a real benchmark and reports what actually
