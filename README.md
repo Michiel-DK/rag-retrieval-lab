@@ -1,5 +1,10 @@
 # rag-retrieval-lab
 
+![python](https://img.shields.io/badge/python-3.12-3f5f7f)
+![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
+![notebooks](https://img.shields.io/badge/notebooks-4%20of%206%20run-8a97a6)
+![tests](https://img.shields.io/badge/tests-46%20pytest-3f5f7f)
+
 **Retrieval methods, explained by running them — predictions written down first.**
 **The case with receipts (frozen write-up): [`SHOWCASE.md`](SHOWCASE.md).**
 
@@ -10,6 +15,29 @@ moved — including when the answer is "nothing."
 Built from experiments originally run on a production investor-matching system, re-run
 here on [NFCorpus](https://huggingface.co/datasets/BeIR/nfcorpus) so you can execute
 every claim yourself.
+
+![nDCG@10 per method with 95% bootstrap CI](docs/img/ndcg10-by-method.png)
+
+## Results
+
+Recomputed from the committed per-query score files (`results/scores/*.json`, 323
+queries, human qrels) by `experiments/make_readme_chart.py`; the same numbers are in
+[`LESSONS.md`](LESSONS.md). Deltas are paired bootstrap against the dense baseline,
+10,000 resamples, 95% CI.
+
+| method | nDCG@10 | Δ vs dense (95% CI) | recall@10 | recall@50 |
+|---|---|---|---|---|
+| dense (MiniLM-L6, title+text) | 0.3167 | baseline | 0.1550 | 0.2508 |
+| BM25 (untuned, see note) | 0.2678 | −0.049 (−0.071 to −0.027), p ≈ 0 | 0.1241 | 0.1792 |
+| RRF (dense + BM25) | 0.3093 | −0.007 (−0.024 to +0.009), null | 0.1477 | 0.2521 |
+| zerank-1-small rerank of the dense top-50 | 0.3881 | +0.071 (+0.055 to +0.089), p ≈ 0 | 0.1819 | 0.2508 |
+| LLM-judge rerank of the dense top-50 | **0.4052** | +0.089 (+0.072 to +0.106), p ≈ 0 | 0.1865 | 0.2508 |
+
+Note on BM25: the index is built with `.lower().split()`, no stemming and no stopword
+list (`ragexp/retrieve.py`). The 0.2678 is a ceiling for that preprocessing, not a
+verdict on BM25. Note on recall@50: the two rerankers permute the dense top-50, so their
+recall@50 is identical to dense by construction; recall@10 moves because the reranker
+changes which of those 50 reach the top-10.
 
 ---
 
@@ -61,8 +89,8 @@ actually happened. In order.
 |---|---|---|---|---|
 | 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction — this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" | ✅ run — both demos land (zero-poisoning understates 40%; paired p≈0 where independent CIs overlap) |
 | 02 | `dense-baseline` | embed, rank by cosine | *No prediction — this is the bar.* | ✅ run — nDCG@10 0.317; per-query scores committed |
-| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere; **RRF nulls vs dense** — the source system's null transferred. Fusion only beats the weaker parent |
-| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@k doesn't move.** Reranking reorders a fixed pool — it physically cannot change *which* docs are in the top-k | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit. Bonus: judge grading its own homework scores a meaningless 1.0 |
+| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**, the source system's null transferred. Fusion only beats the weaker parent |
+| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0 |
 | 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls** — same encoder, nothing to align | ⬜ open |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART wins.** MSLR is LTR's home benchmark. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but that was LLM-generated labels on a different corpus — worth testing whether the difference is the labels | ⬜ open |
 
@@ -73,9 +101,11 @@ reranks your results, and the score goes up — did the system improve, or did t
 agree with itself?
 
 The answer isn't a better prompt. It's finding a measurement the optimizer *cannot*
-game. Reranking only reorders a fixed candidate pool, so it physically cannot change
-which documents are in the top-k. **recall@k is therefore immune to reranker
-self-agreement.** Any movement there has to come from somewhere real.
+game. Reranking only reorders a fixed candidate pool, so it cannot change which
+documents are in the pool. **recall at the pool depth (recall@50 here) is therefore
+immune to reranker self-agreement.** recall@10 is not: reranking changes which pool
+docs reach the top-10, and it did move (+0.032 for the LLM judge). Any movement in
+recall@50 has to come from somewhere real, or from a bug.
 
 That idea — find a measurement the thing being tested can't influence — is the whole
 repo, and it generalises well past retrieval.
@@ -89,8 +119,9 @@ python -c "from ragexp.data import load_nfcorpus; print(load_nfcorpus().summary(
 # NFCorpus: 3633 docs, 323 queries, 12334 judgments (38.2/query), grade distribution {1: 11758, 2: 576}
 ```
 
-Notebooks 01–03, 05, 06 need **no API key**. Notebook 04 needs one for the LLM judge —
-its outputs are committed to `results/`, so everything downstream reproduces for free.
+No notebook needs an API key. Notebook 04's LLM judge ran through headless Claude Code
+(`claude -p`, subscription login, see `ragexp/rerank.py`), and its grades are committed to
+`results/rerank/`, so everything downstream reproduces without re-running it.
 
 ## Layout
 

@@ -28,7 +28,7 @@ From `LESSONS.md`, all deltas vs the dense baseline (MiniLM-L6), paired bootstra
 | BM25 (nb 03) | 0.2678 (−0.049, p ≈ 0) | **loses everywhere** — "lexical is strong on domain terminology" did not survive contact |
 | RRF fusion (nb 03) | 0.3093 (every CI straddles zero) | **null** — fusion only beat its *weaker* parent, the trivial direction |
 | LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.072 – +0.106) | the only intervention that beat the baseline |
-| zerank-1-small, 1.7B (nb 04) | 0.3881 (+0.0714) | ~80% of the LLM's lift at zero marginal cost per query |
+| zerank-1-small, 1.7B (nb 04) | 0.3881 (+0.0714) | ~80% of the LLM's lift with no per-query API cost (runs locally on a laptop; tens of seconds per query) |
 
 ## Four receipts
 
@@ -80,7 +80,7 @@ depth=100 measurably clips recall@50 (−0.007, p = 0.03).
   results did *not* transfer wholesale, and that the difference is the lesson. No claim
   here should be quoted without that scope.
 - **The LLM judge's gain costs per-query inference.** The ledger prices the trade: the
-  1.7B cross-encoder keeps ~80% of the lift for free.
+  1.7B cross-encoder keeps ~80% of the lift with no API cost (local inference, tens of seconds per query).
 
 ## Why this transfers
 
