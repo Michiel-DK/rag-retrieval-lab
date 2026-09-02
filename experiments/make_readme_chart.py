@@ -87,7 +87,7 @@ def main() -> None:
         ax.spines[s].set_color(grid)
     ax.yaxis.grid(True, color=grid, lw=0.6)
     ax.set_axisbelow(True)
-    ax.set_title("NFCorpus, human qrels. Bars: mean nDCG@10; whiskers: 95% bootstrap CI of the mean; dashed: dense baseline",
+    ax.set_title("NFCorpus, human qrels. Mean nDCG@10 over 323 queries, 95% bootstrap CI, dashed = dense",
                  fontsize=9.5, color=fg, loc="left")
     fig.text(0.01, 0.01,
              "Source: results/scores/*.json via experiments/make_readme_chart.py. "
