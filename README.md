@@ -4,6 +4,7 @@
 ![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
 ![notebooks](https://img.shields.io/badge/notebooks-4%20of%206%20run-8a97a6)
 ![tests](https://img.shields.io/badge/tests-46%20pytest-3f5f7f)
+![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them — predictions written down first.**
 **The case with receipts (frozen write-up): [`SHOWCASE.md`](SHOWCASE.md).**
