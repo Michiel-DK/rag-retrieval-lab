@@ -11,4 +11,4 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       # integration tests download NFCorpus and re-embed it; run them locally
-      - run: pytest -q tests --ignore=tests/test_integration.py
+      - run: python -m pytest -q tests --ignore=tests/test_integration.py   # -m puts the repo root on sys.path (ragexp is not packaged)
