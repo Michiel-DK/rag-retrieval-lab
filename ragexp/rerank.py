@@ -73,6 +73,9 @@ class ClaudeCLIJudge:
     """
 
     def __init__(self, model: str = "opus", timeout: int = 600, max_chars: int = 350):
+        # "opus" is an unversioned CLI alias. The committed grades
+        # (results/rerank/llm_grades.json, 2026-08-15) came through it; the exact
+        # model version was not recorded.
         self.model = model
         self.timeout = timeout
         self.max_chars = max_chars  # per-doc text budget keeps the prompt sane

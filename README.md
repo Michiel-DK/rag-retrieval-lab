@@ -123,6 +123,13 @@ No notebook needs an API key. Notebook 04's LLM judge ran through headless Claud
 (`claude -p`, subscription login, see `ragexp/rerank.py`), and its grades are committed to
 `results/rerank/`, so everything downstream reproduces without re-running it.
 
+Provenance of the judge row: the grades were committed on 2026-08-15 and came through the
+CLI's `opus` alias (Claude Opus; the exact model version behind the alias was not
+recorded). The 0.4052 figure reproduces from the committed grades; the grades themselves
+cannot be regenerated against the same model, since the alias moves. The zerank row can
+be re-run locally against the named checkpoint `zeroentropy/zerank-1-small` (not
+revision-pinned).
+
 ## Layout
 
 ```

@@ -3,7 +3,7 @@
 The closing artifact for notebooks 01–04 (the stop-and-ship set). Every number below is
 **recomputed from the committed per-query score files** (`results/scores/*.json`, n = 323
 NFCorpus queries, scored against the dataset's human qrels) — not read off a notebook cell.
-Format follows `docs/technical/RETRIEVAL_LEDGER.md`. Notebooks 05–06 are optional depth;
+Notebooks 05–06 are optional depth;
 their rows get added if they run.
 
 ## Predictions → results

@@ -1,6 +1,6 @@
 """Integration smoke tests — need the HF dataset cache and results/emb/.
 
-These are the BUILD.md "smoke test embed.py / retrieve.py" gate: load the
+These are the smoke-test gate for embed.py / retrieve.py: load the
 real corpus, hit the committed embedding cache, and check each retrieval
 method finds relevant documents for a known query.
 
