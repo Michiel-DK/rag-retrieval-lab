@@ -164,3 +164,22 @@ Notebook 04's LLM-judge grades and zerank scores are committed under
 `results/rerank/`, so everything reproduces without an API key or a GPU.
 
 Remaining: notebooks 05–06 (optional depth). `LESSONS.md` and the predictions→results table are in place.
+
+### Next (filed 2026-09-21)
+
+**Notebook 04, third reranker arm — GLiClass.** [`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass)
+(Apache-2.0) scores every candidate label in one encoder pass instead of one cross-encoder pass per
+(query, doc) pair; its paper claims ~10× a cross-encoder at comparable quality. Same slot as
+`ZerankReranker` in `ragexp/rerank.py`, same 50-doc pool, same 323 queries, same paired bootstrap
+against the dense baseline — scores committed under `results/rerank/` like the other two arms.
+The interesting comparison is against zerank (0.3881, 1.7B, tens of seconds per query on a laptop),
+not against the LLM judge. **Prediction: write it here before running, per the repo rule.**
+Structural invariant that must hold again: recall@50 bit-identical at 0.2508.
+
+**A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
+[rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
+Pages (`testing-the-tests.html`) and links it from its README. Do the same here from `SHOWCASE.md`
+plus the GLiClass row once it exists — it is the page the roger3000 site will link as its third
+proof tile ("we test retrieval methods before we sell them; here is what did nothing").
+Quote only numbers scored against the human qrels; never the judge-labelled 1.0000 as a result.
+
