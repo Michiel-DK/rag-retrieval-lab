@@ -43,3 +43,8 @@ long multi-section documents. If it pays here anyway, that's the finding.
 
 Under ~200k tokens (~500 pages), the post says skip retrieval and put the whole knowledge base in
 the prompt. Worth a sentence in `LESSONS.md` as the "when not to build RAG at all" boundary.
+
+## 2026-10-21 addendum — retrieval items from the repo-radar feed (verdicts: repo-radar `PAPER_VERDICTS.md` 10-21)
+
+- **CoverSynth (2610.15409), coverage-guided retrieval eval sets.** From an unannotated corpus, target coverage across retrieval demands and system capabilities; deterministic checks locate evidence quotes in sources, model checks gate semantic validity. On RepLiQA **91% of human-written queries are answered by all 12 systems in the panel vs 12% of generated ones**; 12/12 within-harness model contrasts significant on generated sets vs 4/12 on human sets; surfaces underspecified/ambiguous-request failures. For this lab: the eval sets used in the notebooks are human/benchmark sets and may not separate configurations for the same reason. CANDIDATE; reopen when a config comparison comes back "within noise".
+- **Simple Linear Corrections for Compression in Late Interaction (2610.14196)** and **Tail-Aware Retrieval Evaluation (2610.17986)**: skipped by title in the triage (multi-vector index compression; image instance retrieval with 100M distractors). Listed so they are not re-found as new.
