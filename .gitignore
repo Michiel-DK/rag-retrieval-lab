@@ -10,3 +10,9 @@ results/emb/
 
 # OS
 .DS_Store
+
+# Internal dev harness (private): a LOCAL checkout at harness/ plus the .claude/ symlinks into it.
+# Not part of this tree — the 2026-07-21 "dependency-free" decision stands for readers; the
+# checkout exists only for the 2026-10-29 control-arm pilot (harness stub S-171).
+harness/
+.claude/
