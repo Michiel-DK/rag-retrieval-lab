@@ -3,7 +3,7 @@
 ![python](https://img.shields.io/badge/python-3.12-3f5f7f)
 ![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
 ![notebooks](https://img.shields.io/badge/notebooks-6%20of%206%20run-8a97a6)
-![tests](https://img.shields.io/badge/tests-74%20pytest-3f5f7f)
+![tests](https://img.shields.io/badge/tests-75%20pytest-3f5f7f)
 ![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them: predictions written down first.**
@@ -99,7 +99,7 @@ actually happened. In order.
 | 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction; this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" | ✅ run; both demos land (zero-poisoning understates 40%; paired p≈0 where independent CIs overlap) |
 | 02 | `dense-baseline` | embed, rank by cosine | *No prediction; this is the bar.* | ✅ run; nDCG@10 0.317; per-query scores committed |
 | 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, no punctuation stripping, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**: the source system's null transferred. Fusion only beats the weaker parent |
-| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0 |
+| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0. Third arm (GLiClass, pre-registered 2026-10-29): **half failed**, 0.278, below dense (−0.039, CI below 0) |
 | 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | **Split:** pooling helps held against title-only: chunk-pool nDCG@10 +0.0255 (p=0.0002). It nulled against `dense` (title+text) on all three metrics over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), though recall@50 -0.0245 (p=0.0112) is a significant loss |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | **Held:** test nDCG@10 0.327 (best feature, picked on vali) → 0.492 (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries. One fold, fixed settings |
 
@@ -183,14 +183,21 @@ All six notebooks have run. `LESSONS.md` and its predictions→results table cov
 
 ### Next (filed 2026-09-21)
 
-**Notebook 04, third reranker arm: GLiClass.** [`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass)
-(Apache-2.0) scores every candidate label in one encoder pass instead of one cross-encoder pass per
-(query, doc) pair. Its paper claims ~10× a cross-encoder at comparable quality. Same slot as
-`ZerankReranker` in `ragexp/rerank.py`, same 50-doc pool, same 323 queries, same paired bootstrap
-against the dense baseline. Scores are committed under `results/rerank/` like the other two arms.
-The interesting comparison is against zerank (0.3881, 1.7B, tens of seconds per query on a laptop),
-not against the LLM judge. **Prediction: write it here before running, per the repo rule.**
-Structural invariant that must hold again: recall@50 bit-identical at 0.2508.
+**Notebook 04, third reranker arm: GLiClass. Pre-registered 2026-10-29 (`bdc024b`), run the same day.**
+[`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass) (Apache-2.0) is a zero-shot
+classifier: it scores one text against a list of labels. Its paper claims ~10× a cross-encoder at
+comparable quality. Setup, fixed before running: `knowledgator/gliclass-modern-base-v3.0`, one pass
+per (query, doc) pair, with the doc as the text (cut to 1,200 chars, zerank's cut) and the query as
+the only label. The score is that label's probability. Same 50-doc dense pool, same 323 queries,
+`paired_bootstrap` in corpus order. Scores go to `results/rerank/gliclass_scores.json`.
+**Prediction: GLiClass beats the dense baseline (paired nDCG@10 CI above 0) but loses to zerank
+(paired CI against zerank below 0).** A base-size zero-shot classifier should not match a 1.7B model
+trained to rank. Falsified if either CI includes 0 or lies on the other side. Structural check:
+recall@50 bit-identical at 0.2508. The one-pass mode behind the speed claim (query as text, the 50
+docs as labels) is not tested; wall-clock time is recorded.
+**Result: half failed.** GLiClass scored nDCG@10 0.2781, *below* the dense pool it reorders
+(−0.0386, CI [−0.0601, −0.0177], p = 0.0004), and below zerank (−0.1100). It is not a broken
+harness: a random shuffle of the pools scores 0.114. See the end of notebook 04.
 
 **A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
 [rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
