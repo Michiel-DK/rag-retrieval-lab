@@ -92,7 +92,7 @@ def test_committed_pool_reproduces_committed_rerank_scores(corpus):
                     assert g == w, (name, qid, metric, g, w)
                 else:
                     # ndcg sums log2 discounts, so another numpy can move the
-                    # last bit (seen: 3.3e-16). A wrong order moves it ~1e-2.
+                    # last bit (seen: 3.3e-16). Sorting the pool by doc id moves it up to 0.52.
                     assert g is not None and math.isclose(
                         g, w, rel_tol=1e-12, abs_tol=1e-12
                     ), (name, qid, metric, g, w)
