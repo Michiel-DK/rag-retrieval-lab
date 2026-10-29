@@ -3,7 +3,8 @@
 The closing artifact for notebooks 01–04 (the stop-and-ship set). Every number below is
 **recomputed from the committed per-query score files**, not read off a notebook cell.
 The source is `results/scores/*.json`: n = 323 NFCorpus queries, scored against the
-dataset's human qrels.
+dataset's human qrels. The notebook 06 row is the exception: it uses MSLR-WEB10K Fold 1
+test queries (n = 1,928 with a relevant document), from `results/scores/ltr_*.json`.
 
 Notebooks 05–06 are optional depth. Their rows get added if they run.
 
@@ -30,6 +31,7 @@ Notebooks 05–06 are optional depth. Their rows get added if they run.
 | zerank-1-small (1.7B cross-encoder) vs dense | nDCG@10 +0.0714, CI [+0.055, +0.089], p ≈ 0 | most of the LLM's gain with no per-query API cost (runs locally on a laptop; tens of seconds per query) | an off-the-shelf cross-encoder captures ~80% of the LLM-judge lift; the LLM's edge is real but pay-per-query |
 | recall@50 under both rerankers | per-query max |Δ| = **exactly 0.0** | structural invariant confirmed | a permutation of a 50-doc pool cannot change what's in the pool; if this metric ever moves, you've found a bug, not an improvement |
 | LLM rerank scored against the judge's **own** grades | nDCG@10 = 1.0000, a mean over 317 of the 323 queries (vs 0.4052 against human labels, over all 323) | a perfect score containing zero information | when the labeler and the reranker share a model, the metric is self-agreement, not quality; **anchor evaluation in a measurement the evaluated system cannot influence** |
+| LambdaMART vs best single feature (MSLR-WEB10K Fold 1, nb 06) | nDCG@10 0.327 → 0.492, +0.165, CI [+0.155, +0.175], p ≈ 0 | learned ranker wins, as predicted | on features designed to be combined, a listwise ranker beats the strongest single signal by a wide margin; pick the baseline feature on vali, never on test |
 
 ## The one-line version
 
