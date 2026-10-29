@@ -36,8 +36,12 @@ class Embedder:
             self._model = SentenceTransformer(self.model_name)
         return self._model
 
-    def _key(self, texts: Sequence[str]) -> Path:
+    def _key(self, texts: Sequence[str], normalize: bool = True) -> Path:
         h = hashlib.sha256()
+        # Raw vectors get a distinct key. The marker is hashed only when
+        # normalize=False, so default (unit-vector) keys match existing caches.
+        if not normalize:
+            h.update(b"\x01raw\x00")
         h.update(self.model_name.encode())
         h.update(b"\x00")
         for t in texts:
@@ -49,10 +53,11 @@ class Embedder:
         """Embed ``texts`` -> (n, dim) float32 array. Cached by content.
 
         ``normalize=True`` gives unit vectors, so a dot product IS cosine
-        similarity — that's what ``retrieve.dense`` relies on.
+        similarity — that's what ``retrieve.dense`` relies on. The flag is
+        part of the cache key, so raw and unit vectors never share a file.
         """
         texts = list(texts)
-        cache_path = self._key(texts)
+        cache_path = self._key(texts, normalize)
         if cache_path.exists():
             return np.load(cache_path)
 
