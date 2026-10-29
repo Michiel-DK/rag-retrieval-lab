@@ -165,6 +165,56 @@ class ZerankReranker:
         return out
 
 
+# ── GLiClass (zero-shot classifier as a reranker) ────────────────────────
+
+
+class GliclassReranker:
+    """`knowledgator/gliclass-modern-base-v3.0` scoring (query, doc) pairs. Lazy-loaded.
+
+    A zero-shot classifier, not a ranker: each doc is the text and the query is
+    its only label, so a doc's score is the sigmoid probability that the query
+    applies to it. ``max_chars`` is zerank's cut, so both arms see the same input.
+    """
+
+    def __init__(
+        self,
+        model_name: str = "knowledgator/gliclass-modern-base-v3.0",
+        batch_size: int = 8,
+        max_chars: int = 1200,
+    ):
+        self.model_name = model_name
+        self.batch_size = batch_size
+        self.max_chars = max_chars
+        self._pipeline = None
+
+    def _load(self):
+        if self._pipeline is None:
+            import torch
+            from gliclass import GLiClassModel, ZeroShotClassificationPipeline
+            from transformers import AutoTokenizer
+
+            device = "mps" if torch.backends.mps.is_available() else "cpu"
+            self._pipeline = ZeroShotClassificationPipeline(
+                GLiClassModel.from_pretrained(self.model_name),
+                AutoTokenizer.from_pretrained(self.model_name, add_prefix_space=True),
+                classification_type="multi-label",
+                device=device,
+                progress_bar=False,
+            )
+        return self._pipeline
+
+    def score(self, query: str, texts: Sequence[str]) -> List[float]:
+        pipeline = self._load()
+        # threshold 0.0 keeps every label, so each result holds exactly one score
+        results = pipeline(
+            [t[: self.max_chars] for t in texts],
+            [query],
+            threshold=0.0,
+            batch_size=self.batch_size,
+        )
+        return [float(r[0]["score"]) for r in results]
+
+
 # ── Checkpointed sweeps ──────────────────────────────────────────────────
 
 

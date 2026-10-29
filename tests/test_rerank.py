@@ -207,3 +207,20 @@ def test_committed_dense_pool_matches_committed_sweeps():
     for qid, ids in pool.items():
         assert len(ids) == 50 and len(set(ids)) == 50, qid
         assert set(ids) == set(llm[qid]) == set(zr[qid]), qid
+
+
+def test_gliclass_scores_each_doc_against_the_query_as_its_only_label():
+    from ragexp.rerank import GliclassReranker
+
+    calls = []
+
+    def fake_pipeline(texts, labels, threshold, batch_size):
+        calls.append((texts, labels, threshold))
+        return [[{"label": labels[0], "score": 0.1 * (i + 1)}] for i in range(len(texts))]
+
+    reranker = GliclassReranker(max_chars=5)
+    reranker._pipeline = fake_pipeline
+    scores = reranker.score("vitamin d", ["abcdefgh", "xy"])
+
+    assert calls == [(["abcde", "xy"], ["vitamin d"], 0.0)]
+    assert scores == pytest.approx([0.1, 0.2])
