@@ -11,10 +11,12 @@ Methods:
 - ``rrf``        — Reciprocal Rank Fusion of two rankings (nb 03)
 - ``pool_doc``   — title-only vs title+pooled-chunks embedding (nb 05); with
   per-chunk prefixes, the contextual-retrieval arms (nb 07)
+- ``chunk_matrix`` + ``best_chunk_scores`` — every chunk ranked on its own, a
+  doc scoring as its best chunk (nb 07's chunk-level arm)
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -133,11 +135,7 @@ def pool_doc_matrix(
         title_vecs = embedder.encode([d.title or d.text[:80] for d in docs])
         # One encode call over every doc's chunks, then split back per doc:
         # per-doc calls wrote one cache file per document.
-        per_doc = [_chunks(d.text) for d in docs]
-        if chunk_prefixes is not None:
-            per_doc = [_prefixed(ch, chunk_prefixes.get(d.doc_id)) for d, ch in zip(docs, per_doc)]
-        bounds = np.cumsum([0] + [len(ch) for ch in per_doc])
-        chunk_vecs = embedder.encode([c for ch in per_doc for c in ch])
+        chunk_vecs, bounds = _encode_chunks(docs, embedder, chunk_prefixes)
         pooled = np.zeros_like(title_vecs)
         for i in range(len(docs)):
             pooled[i] = chunk_vecs[bounds[i] : bounds[i + 1]].mean(axis=0)
@@ -145,6 +143,30 @@ def pool_doc_matrix(
         norms = np.linalg.norm(blend, axis=1, keepdims=True)
         return blend / np.clip(norms, 1e-8, None)
     raise ValueError(f"unknown mode {mode!r}")
+
+
+def chunk_matrix(
+    docs: Sequence[Doc],
+    embedder: Embedder,
+    chunk_prefixes: Optional[Dict[str, List[str]]] = None,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Every chunk as its own row, plus ``bounds``: doc ``i`` owns rows
+    ``bounds[i]:bounds[i + 1]``. Same chunks, prefixes and encode call as
+    ``pool_doc_matrix(mode="pool")``, so the embedding cache is shared."""
+    return _encode_chunks(docs, embedder, chunk_prefixes)
+
+
+def best_chunk_scores(query_vecs: np.ndarray, chunk_vecs: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+    """(n_queries, n_docs): each doc scores as the cosine of its best chunk."""
+    return np.maximum.reduceat(query_vecs @ chunk_vecs.T, bounds[:-1], axis=1)
+
+
+def _encode_chunks(docs, embedder, chunk_prefixes):
+    per_doc = [_chunks(d.text) for d in docs]
+    if chunk_prefixes is not None:
+        per_doc = [_prefixed(ch, chunk_prefixes.get(d.doc_id)) for d, ch in zip(docs, per_doc)]
+    bounds = np.cumsum([0] + [len(ch) for ch in per_doc])
+    return embedder.encode([c for ch in per_doc for c in ch]), bounds
 
 
 def _prefixed(chunks: List[str], prefixes: Optional[List[str]]) -> List[str]:

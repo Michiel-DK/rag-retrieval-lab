@@ -3,7 +3,7 @@
 ![python](https://img.shields.io/badge/python-3.12-3f5f7f)
 ![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
 ![notebooks](https://img.shields.io/badge/notebooks-7%20of%207%20run-8a97a6)
-![tests](https://img.shields.io/badge/tests-81%20pytest-3f5f7f)
+![tests](https://img.shields.io/badge/tests-83%20pytest-3f5f7f)
 ![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them: predictions written down first.**
@@ -102,7 +102,7 @@ actually happened. In order.
 | 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0. Third arm (GLiClass, pre-registered 2026-10-29): **half failed**, 0.278, below dense (−0.039, CI below 0) |
 | 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | **Split:** pooling helps held against title-only: chunk-pool nDCG@10 +0.0255 (p=0.0002). It nulled against `dense` (title+text) on all three metrics over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), though recall@50 -0.0245 (p=0.0112) is a significant loss |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | **Held:** test nDCG@10 0.327 (best feature, picked on vali) → 0.492 (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries. One fold, fixed settings |
-| 07 | `contextual-retrieval` | chunk text: plain vs title-prefixed vs LLM context line (Claude Haiku) | **The LLM context line beats plain chunks, but not the title.** Arm 3 vs arm 1 paired nDCG@10 CI above 0; arm 3 vs arm 2 CI includes 0. Pre-registered 2026-10-29, before any context line was written | **Failed, first half:** arm 3 (Haiku context) vs arm 1 (plain) nDCG@10 +0.0051, CI [−0.0011, +0.0117], p = 0.11. Second half held: vs arm 2 (title) +0.0025, CI includes 0. Every chunk arm ties title+text dense (0.3167): 0.3140 / 0.3166 / 0.3191 |
+| 07 | `contextual-retrieval` | chunk text: plain vs title-prefixed vs LLM context line (Claude Haiku) | **The LLM context line beats plain chunks, but not the title.** Arm 3 vs arm 1 paired nDCG@10 CI above 0; arm 3 vs arm 2 CI includes 0. Pre-registered 2026-10-29, before any context line was written | **Failed, first half:** arm 3 (Haiku context) vs arm 1 (plain) nDCG@10 +0.0051, CI [−0.0011, +0.0117], p = 0.11. Second half held: vs arm 2 (title) +0.0025, CI includes 0. Every chunk arm ties title+text dense (0.3167): 0.3140 / 0.3166 / 0.3191. Chunk-level follow-up (pre-registered): **held**, context beats plain chunks when each chunk is ranked alone (+0.0238), and the title prefix matches it |
 
 ### The thread running through all of them
 
@@ -208,3 +208,17 @@ plus the GLiClass row once it exists. It is the page the roger3000 site will lin
 proof tile ("we test retrieval methods before we sell them; here is what did nothing").
 Quote only numbers scored against the human qrels; never the judge-labelled 1.0000 as a result.
 
+**Notebook 07, chunk-level arm. Pre-registered 2026-10-29, before any chunk-level score was
+computed.** Notebook 07 pooled chunk vectors into one document vector. The Anthropic post ranks
+chunks on their own. Setup, fixed before running: nb 07's chunks (400-char windows, 80 overlap),
+encoder and committed Haiku lines, no new LLM calls. Each chunk is its own vector, and a document
+scores as its best chunk (max cosine). Arm A: plain chunks. Arm B: Haiku context line, a newline,
+the chunk.
+**Prediction: in chunk-level retrieval the context line beats plain chunks (B vs A paired nDCG@10
+CI above 0).** ConTEB's NanoBEIR null was measured at about one chunk per document; here documents
+split into about five, and in max mode chunks after the first carry no title. Falsified if the CI
+includes 0 or lies below it. Reported, not bet on: a title-prefix max arm, every max arm against
+`dense` and against its pooled nb 07 twin.
+**Result: held.** Haiku context against plain chunks, max-scored: nDCG@10 +0.0238, CI [+0.0123,
++0.0358]. The free title prefix gains the same (+0.0245; context against title −0.0006, CI includes 0).
+See the end of notebook 07.

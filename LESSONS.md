@@ -48,6 +48,8 @@ train-vs-eval row. Each needs the encoder or the training run.
 | Haiku context line per chunk vs plain chunks (nb 07) | nDCG@10 +0.0051, CI [−0.0011, +0.0117], p = 0.11; recall@10 and recall@50 null | predicted to win, did not | 18,835 LLM-written lines bought nothing measurable on short abstracts. Context restores what a chunk lost from its document, and a ~1.7k-char abstract in five chunks loses little. The ConTEB paper (2505.24782) measures the same split: context lifts its context-dependent tasks 52.0 → 72.4 nDCG@10 and leaves NanoBEIR at 63.2 (nb 07's post-hoc cell) |
 | title prefixed to every chunk vs plain chunks (nb 07) | nDCG@10 +0.0026, CI [−0.0070, +0.0120], p = 0.60 | the free control nulled too | the pooled vector already blends in the title vector, so a per-chunk title repeats it |
 | every chunk arm vs `dense` (title+text) (nb 07) | nDCG@10 −0.0001 (title arm), +0.0024 (context arm), both p > 0.7 | null | on short documents, embedding the whole document once is as good as any chunking scheme tested here |
+| Haiku context vs plain chunks, each chunk ranked alone (nb 07, max over chunks) | nDCG@10 +0.0238, CI [+0.0123, +0.0358], p ≈ 0; recall@50 +0.0153 | predicted to win, did | the pooled null hid the mechanism: context repairs what a chunk loses when it is ranked without its document. Pick the retrieval unit before judging a context method |
+| Haiku context vs title prefix, both max-scored (nb 07) | nDCG@10 −0.0006, CI [−0.0123, +0.0113] | reported, null | on short abstracts the title is all the context a chunk needs; the LLM lines cost 18,835 calls for nothing extra |
 
 ## The one-line version
 
