@@ -72,9 +72,11 @@ The notebook 03 prediction was registered as **genuinely unsure**, with the mech
 arguments for both directions written down. BM25 should like bio-medical terminology.
 The source system this repo generalizes had seen RRF *hurt*.
 
-The run resolved it. BM25 loses to dense on every metric (recall@50 −0.072, p ≈ 0),
-because NFCorpus queries are natural-language questions, not keyword queries. RRF hands
-back roughly the stronger parent, a null on all three metrics.
+The run resolved it. BM25 loses to dense on every metric (recall@50 −0.072, p ≈ 0).
+The loss is not uniform. On the 103 single-term queries BM25 ties dense (+0.0008
+nDCG@10, p = 0.95); on the 96 queries of five or more words it loses by 0.104. That
+split was run afterwards, so it is exploratory. RRF hands back roughly the stronger
+parent, a null on all three metrics.
 
 A secondary measurement made the fusion-depth choice empirical rather than
 conventional.
