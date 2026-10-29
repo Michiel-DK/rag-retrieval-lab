@@ -125,11 +125,14 @@ def pool_doc_matrix(
         return embedder.encode([d.full for d in docs])
     if mode == "pool":
         title_vecs = embedder.encode([d.title or d.text[:80] for d in docs])
+        # One encode call over every doc's chunks, then split back per doc:
+        # per-doc calls wrote one cache file per document.
+        per_doc = [_chunks(d.text) for d in docs]
+        bounds = np.cumsum([0] + [len(ch) for ch in per_doc])
+        chunk_vecs = embedder.encode([c for ch in per_doc for c in ch])
         pooled = np.zeros_like(title_vecs)
-        for i, d in enumerate(docs):
-            ch = _chunks(d.text)
-            cv = embedder.encode(ch)
-            pooled[i] = cv.mean(axis=0)
+        for i in range(len(docs)):
+            pooled[i] = chunk_vecs[bounds[i] : bounds[i + 1]].mean(axis=0)
         blend = 0.25 * title_vecs + 0.75 * pooled
         norms = np.linalg.norm(blend, axis=1, keepdims=True)
         return blend / np.clip(norms, 1e-8, None)

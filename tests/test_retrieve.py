@@ -1,9 +1,11 @@
 """Unit tests for ragexp.retrieve — synthetic inputs, no dataset, no model."""
+import zlib
+
 import numpy as np
 import pytest
 
 from ragexp.data import Doc
-from ragexp.retrieve import bm25, build_bm25, dense, rrf
+from ragexp.retrieve import _chunks, bm25, build_bm25, dense, pool_doc_matrix, rrf
 
 
 class FakeEmbedder:
@@ -77,3 +79,80 @@ def test_rrf_depth_changes_tail_not_head():
     full = rrf([l1, l2])
     trunc = rrf([l1, l2], depth=2)
     assert full[:2] == trunc[:2] == ["a", "b"]
+
+
+# ── Chunk pooling (nb 05) ─────────────────────────────────────────────────
+
+
+class HashEmbedder:
+    """Deterministic, deliberately non-unit vectors for any string, and a
+    record of every encode call, so pooling is testable without a model."""
+
+    def __init__(self, dim=8):
+        self.dim = dim
+        self.calls = []
+
+    def _vec(self, t):
+        rng = np.random.default_rng(zlib.crc32(t.encode()))
+        return rng.normal(size=self.dim) * 3.0
+
+    def encode(self, texts, normalize=True):
+        texts = list(texts)
+        self.calls.append(texts)
+        return np.array([self._vec(t) for t in texts], dtype=np.float32)
+
+
+def test_chunks_short_text_is_one_chunk():
+    assert _chunks("short") == ["short"]
+    assert _chunks("x" * 400) == ["x" * 400]
+
+
+def test_chunks_windows_overlap_and_cover_the_text():
+    text = "".join(chr(97 + i % 26) for i in range(1000))
+    ch = _chunks(text)
+    assert [len(c) for c in ch] == [400, 400, 360, 40]
+    assert ch[1][:80] == ch[0][-80:]
+    assert ch[-1] == text[960:]
+
+
+def test_chunks_drops_whitespace_only_windows():
+    text = "a" * 400 + " " * 400
+    assert all(c.strip() for c in _chunks(text))
+
+
+def test_pool_doc_matrix_title_and_full_modes():
+    docs = [Doc("d1", "Title one", "body one"), Doc("d2", "", "body two " * 20)]
+    emb = HashEmbedder()
+    pool_doc_matrix(docs, emb, mode="title")
+    assert emb.calls[-1] == ["Title one", ("body two " * 20)[:80]]
+    pool_doc_matrix(docs, emb, mode="full")
+    assert emb.calls[-1] == [d.full for d in docs]
+
+
+def test_pool_doc_matrix_pool_matches_per_doc_blend():
+    docs = [
+        Doc("d1", "Short doc", "one chunk only"),
+        Doc("d2", "Long doc", "lorem ipsum " * 100),
+        Doc("d3", "Mid doc", "dolor sit amet " * 40),
+    ]
+    emb = HashEmbedder()
+    got = pool_doc_matrix(docs, emb, mode="pool")
+    assert got.shape == (3, emb.dim)
+    np.testing.assert_allclose(np.linalg.norm(got, axis=1), 1.0, atol=1e-5)
+    for i, d in enumerate(docs):
+        title = emb._vec(d.title)
+        pooled = np.mean([emb._vec(c) for c in _chunks(d.text)], axis=0)
+        blend = 0.25 * title + 0.75 * pooled
+        np.testing.assert_allclose(got[i], blend / np.linalg.norm(blend), atol=1e-5)
+
+
+def test_pool_doc_matrix_pool_encodes_in_two_calls():
+    docs = [Doc(f"d{i}", f"t{i}", "word " * (50 * (i + 1))) for i in range(5)]
+    emb = HashEmbedder()
+    pool_doc_matrix(docs, emb, mode="pool")
+    assert len(emb.calls) == 2
+
+
+def test_pool_doc_matrix_unknown_mode_raises():
+    with pytest.raises(ValueError):
+        pool_doc_matrix([Doc("d1", "t", "x")], HashEmbedder(), mode="nope")
