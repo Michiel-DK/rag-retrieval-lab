@@ -2,8 +2,8 @@
 
 ![python](https://img.shields.io/badge/python-3.12-3f5f7f)
 ![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
-![notebooks](https://img.shields.io/badge/notebooks-4%20of%206%20run-8a97a6)
-![tests](https://img.shields.io/badge/tests-46%20pytest-3f5f7f)
+![notebooks](https://img.shields.io/badge/notebooks-6%20of%206%20run-8a97a6)
+![tests](https://img.shields.io/badge/tests-74%20pytest-3f5f7f)
 ![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them: predictions written down first.**
@@ -70,8 +70,8 @@ abstracts. Some mechanisms carry over, some don't, and the difference is the les
   original null may have been a fact about that corpus, not about RRF. (Notebook 03,
   prediction: genuinely unsure, and that's the honest answer)
 
-The predictions for notebooks 03 and 04 have now **resolved**. The notebooks carry the
-numbers and the readings. Notebooks 05 and 06's predictions are still open.
+All six notebooks have run, and the predictions for notebooks 03 to 06 have all
+**resolved**. The notebooks carry the numbers and the readings.
 
 ## The dataset
 
@@ -100,7 +100,7 @@ actually happened. In order.
 | 02 | `dense-baseline` | embed, rank by cosine | *No prediction; this is the bar.* | ✅ run; nDCG@10 0.317; per-query scores committed |
 | 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, no punctuation stripping, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**: the source system's null transferred. Fusion only beats the weaker parent |
 | 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0 |
-| 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | ⬜ open |
+| 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | **Split:** pooling helps held against title-only: chunk-pool nDCG@10 +0.0255 (p=0.0002). It nulled against `dense` (title+text) on all three metrics over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), though recall@50 -0.0245 (p=0.0112) is a significant loss |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | **Held:** test nDCG@10 0.327 (best feature, picked on vali) → 0.492 (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries. One fold, fixed settings |
 
 ### The thread running through all of them
@@ -149,10 +149,10 @@ ragexp/          the library: importable, unit-testable, no notebook magic
   retrieve.py    dense / bm25 / rrf / pooling               [done]
   runs.py        per-query scoring + committed score files  [done]
   rerank.py      LLM judge + off-the-shelf reranker         [done]
-notebooks/       the teaching layer: narrative, plots, lessons (01–04 done)
+notebooks/       the teaching layer: narrative, plots, lessons (all six run)
 experiments/     scripts that produce the committed numbers
 results/         committed snapshots (so notebooks don't need to re-run everything)
-tests/           pytest suite (46 tests; `-m integration` needs local HF caches)
+tests/           pytest suite (74 tests; `-m integration` needs local HF caches)
 LESSONS.md       every experiment: what / number / verdict / lesson  [done]
 ```
 
@@ -161,15 +161,16 @@ claims are testable and the notebooks stay readable.
 
 ## Status
 
-Notebooks 01–04 are the stop-and-ship artifact, and they are done. The library is
-tested. The notebooks are executed with outputs committed. Both open predictions
-resolved: 03 has RRF nulling against dense, and 04 has nDCG rising while recall@50 stays
-frozen, as it structurally must.
+All six notebooks have run. The library is tested. The notebooks are executed with
+outputs committed. Every open prediction resolved. 03 has RRF nulling against dense.
+04 has nDCG rising while recall@50 stays frozen, as it structurally must. 05 splits:
+pooling beats title-only but nulls against dense, and the adapter nulls. 06 has
+LambdaMART beating the best single feature.
 
 Notebook 04's LLM-judge grades and zerank scores are committed under
 `results/rerank/`, so everything reproduces without an API key or a GPU.
 
-Remaining: notebooks 05–06 (optional depth). `LESSONS.md` and the predictions→results table are in place.
+All six notebooks have run. `LESSONS.md` and its predictions→results table cover all six.
 
 ### Next (filed 2026-09-21)
 
