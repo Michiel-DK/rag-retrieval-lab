@@ -87,6 +87,7 @@ def test_sweep_partial_checkpoint_only_runs_missing(tmp_path, monkeypatch):
 
     monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
     (tmp_path / "t.json").write_text(json.dumps({"q1": {"d1": 2.0}}))
+    rr.save_pool({"q1": ["d1"]})  # q1 was graded against this recorded order
 
     pool = {"q1": ["d1"], "q2": ["d2"]}
     calls = []
@@ -135,6 +136,63 @@ def test_sweep_rejects_pool_that_disagrees_with_recorded(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="differs"):
         sweep("t", {"q1": ["d2", "d1"]}, {"q1": "a"}, {"d1": "x", "d2": "y"},
               lambda q, docs: {d: 0.0 for d, _ in docs}, verbose=False, pool_name="p")
+
+
+def _no_call(q, docs):
+    raise AssertionError("score_fn must not be called")
+
+
+def test_sweep_rejects_graded_query_with_no_pool_file(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    (tmp_path / "t.json").write_text(json.dumps({"q1": {"d1": 1.0, "d2": 1.0}}))
+    with pytest.raises(ValueError, match=r"q1.*t\.json.*p\.json"):
+        sweep("t", {"q1": ["d1", "d2"], "q2": ["d3"]}, {"q1": "a", "q2": "b"},
+              {"d1": "x", "d2": "y", "d3": "z"}, _no_call, verbose=False, pool_name="p")
+    assert not (tmp_path / "p.json").exists()  # the passed order is not recorded
+
+
+def test_sweep_rejects_graded_query_missing_from_pool_file(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    rr.save_pool({"q2": ["d3"]}, "p")
+    (tmp_path / "t.json").write_text(json.dumps({"q1": {"d1": 1.0, "d2": 1.0}}))
+    with pytest.raises(ValueError, match=r"q1.*t\.json.*p\.json"):
+        sweep("t", {"q1": ["d1", "d2"], "q2": ["d3"]}, {"q1": "a", "q2": "b"},
+              {"d1": "x", "d2": "y", "d3": "z"}, _no_call, verbose=False, pool_name="p")
+    assert rr.load_pool("p") == {"q2": ["d3"]}  # pool file left as it was
+
+
+def test_sweep_accepts_graded_query_recorded_in_same_order(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    rr.save_pool({"q1": ["d2", "d1"]}, "p")
+    (tmp_path / "t.json").write_text(json.dumps({"q1": {"d1": 1.0, "d2": 1.0}}))
+    out = sweep("t", {"q1": ["d2", "d1"]}, {"q1": "a"}, {"d1": "x", "d2": "y"},
+                _no_call, verbose=False, pool_name="p")
+    assert out == {"q1": {"d1": 1.0, "d2": 1.0}}
+
+
+def test_sweep_grades_query_recorded_but_not_graded(tmp_path, monkeypatch):
+    # a kill between the pool write and the grade write leaves this state
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    rr.save_pool({"q1": ["d2", "d1"]}, "p")
+    calls = []
+
+    def fake_score(qtext, docs):
+        calls.append((qtext, [d for d, _ in docs]))
+        return {d: 1.0 for d, _ in docs}
+
+    out = sweep("t", {"q1": ["d2", "d1"]}, {"q1": "a"}, {"d1": "x", "d2": "y"},
+                fake_score, verbose=False, pool_name="p")
+    assert calls == [("a", ["d2", "d1"])]
+    assert out == {"q1": {"d1": 1.0, "d2": 1.0}}
+    assert rr.load_pool("p") == {"q1": ["d2", "d1"]}
 
 
 def test_committed_dense_pool_matches_committed_sweeps():
