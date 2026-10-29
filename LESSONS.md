@@ -29,7 +29,7 @@ Notebooks 05–06 are optional depth. Their rows get added if they run.
 | LLM-judge rerank vs dense | nDCG@10 +0.0885, CI [+0.072, +0.106], p ≈ 0; recall@10 +0.032 | first method to beat the baseline | reranking finds gains where BM25 and RRF couldn't; the pool was fine, the *order* was the problem |
 | zerank-1-small (1.7B cross-encoder) vs dense | nDCG@10 +0.0714, CI [+0.055, +0.089], p ≈ 0 | most of the LLM's gain with no per-query API cost (runs locally on a laptop; tens of seconds per query) | an off-the-shelf cross-encoder captures ~80% of the LLM-judge lift; the LLM's edge is real but pay-per-query |
 | recall@50 under both rerankers | per-query max |Δ| = **exactly 0.0** | structural invariant confirmed | a permutation of a 50-doc pool cannot change what's in the pool; if this metric ever moves, you've found a bug, not an improvement |
-| LLM rerank scored against the judge's **own** grades | nDCG@10 = 1.0000 (vs 0.4052 against human labels) | a perfect score containing zero information | when the labeler and the reranker share a model, the metric is self-agreement, not quality; **anchor evaluation in a measurement the evaluated system cannot influence** |
+| LLM rerank scored against the judge's **own** grades | nDCG@10 = 1.0000, a mean over 317 of the 323 queries (vs 0.4052 against human labels, over all 323) | a perfect score containing zero information | when the labeler and the reranker share a model, the metric is self-agreement, not quality; **anchor evaluation in a measurement the evaluated system cannot influence** |
 
 ## The one-line version
 

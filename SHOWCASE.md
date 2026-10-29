@@ -60,7 +60,7 @@ is broken rather than improved.
 ### 3. The perfect score containing zero information
 
 Scoring the LLM-reranked ranking against the *LLM judge's own* relevance grades yields
-**nDCG@10 = 1.0000**. Against the human labels, the same ranking scores 0.4052.
+**nDCG@10 = 1.0000** (a mean over 317 of the 323 queries: 6 got all-zero judge grades and score as undefined). Against the human labels, the same ranking scores 0.4052.
 
 Both numbers sit side by side in `LESSONS.md`, because the pair is the lesson. When the
 labeler and the reranker share a model, the metric measures self-agreement, not quality.
