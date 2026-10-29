@@ -128,6 +128,11 @@ python -c "from ragexp.data import load_nfcorpus; print(load_nfcorpus().summary(
 # NFCorpus: 3633 docs, 323 queries, 12334 judgments (38.2/query), grade distribution {1: 11758, 2: 576}
 ```
 
+Notebook 06 needs MSLR-WEB10K, which you download by hand from Microsoft Research's MSLR
+page. Its licence does not allow redistribution, so it is not in this repo. The notebook
+reads Fold 1 from `~/data/mslr-web10k/extracted/Fold1`, or from the path in the
+`MSLR_FOLD` environment variable.
+
 No notebook needs an API key. Notebook 04's LLM judge ran through headless Claude Code
 (`claude -p`, subscription login, see `ragexp/rerank.py`), and its grades are committed to
 `results/rerank/`, so everything downstream reproduces without re-running it.
