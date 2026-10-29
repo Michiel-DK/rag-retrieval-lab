@@ -207,11 +207,13 @@ def sweep(
 
     todo = [qid for qid in pool if qid not in done]
     for i, qid in enumerate(todo):
+        # pool first: a kill between the two writes must not leave grades
+        # whose order was never recorded
+        recorded[qid] = list(pool[qid])
+        save_pool(recorded, pool_name)
         docs = [(d, doc_texts[d]) for d in pool[qid]]
         done[qid] = score_fn(query_texts[qid], docs)
         path.write_text(json.dumps(done, indent=0, sort_keys=True))
-        recorded[qid] = list(pool[qid])
-        save_pool(recorded, pool_name)
         if verbose:
             print(f"[{len(done)}/{len(pool)}] {qid}", flush=True)
     return done
