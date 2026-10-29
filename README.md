@@ -34,8 +34,11 @@ queries, human qrels) by `experiments/make_readme_chart.py`; the same numbers ar
 | zerank-1-small rerank of the dense top-50 | 0.3881 | +0.071 (+0.055 to +0.089), p ≈ 0 | 0.1819 | 0.2508 |
 | LLM-judge rerank of the dense top-50 | **0.4052** | +0.089 (+0.071 to +0.106), p ≈ 0 | 0.1865 | 0.2508 |
 
-Note on BM25: the index is built with `.lower().split()`, no stemming and no stopword
-list (`ragexp/retrieve.py`). The 0.2678 is a ceiling for that preprocessing, not a
+Note on BM25: the index is built with `.lower().split()`, no stemming, no stopword
+list and no punctuation stripping (`ragexp/retrieve.py`). Over the 323 test queries,
+73 of the 1,064 query tokens start or end with a non-alphanumeric character, such as
+`cancer?`. A token like that matches only an identically punctuated document token.
+The 0.2678 is a ceiling for that preprocessing, not a
 verdict on BM25. Note on recall@50: the two rerankers permute the dense top-50, so their
 recall@50 is identical to dense by construction; recall@10 moves because the reranker
 changes which of those 50 reach the top-10.
@@ -95,7 +98,7 @@ actually happened. In order.
 |---|---|---|---|---|
 | 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction; this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" | ✅ run; both demos land (zero-poisoning understates 40%; paired p≈0 where independent CIs overlap) |
 | 02 | `dense-baseline` | embed, rank by cosine | *No prediction; this is the bar.* | ✅ run; nDCG@10 0.317; per-query scores committed |
-| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**: the source system's null transferred. Fusion only beats the weaker parent |
+| 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, no punctuation stripping, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**: the source system's null transferred. Fusion only beats the weaker parent |
 | 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0 |
 | 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | ⬜ open |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART wins.** MSLR is LTR's home benchmark. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but that was LLM-generated labels on a different corpus, so it is worth testing whether the difference is the labels | ⬜ open |
