@@ -86,10 +86,13 @@ conventional.
 
 ## What is honestly open
 
-- **Notebooks 05–06 have not run.** Notebook 05's prediction is pre-registered and
-  falsifiable. An adapter trained between query and document space should be a **null**
-  here, because both are embedded by the same model and there is no cross-space
-  misalignment to fix. It is listed as open, not assumed.
+- **Notebooks 05 and 06 have run.** In notebook 05, pooling beat title-only (nDCG@10
+  +0.0255, p=0.0002) but nulled against title+text over 323 queries. The adapter nulled
+  on 107 held-out queries (nDCG@10 -0.0063, p=0.28). In notebook 06, on MSLR-WEB10K
+  Fold 1, LambdaMART beat the best single feature: 0.327 to 0.492, +0.165,
+  CI [+0.155, +0.175], over 1,928 defined test queries. Two things stay open there. MSLR
+  has no text to relabel, so the LLM-label question is untested. The run covers one fold
+  with fixed settings.
 - **One corpus, one embedder.** Every verdict above is a fact about NFCorpus × MiniLM-L6
   with human qrels. The README says explicitly that the source production system's
   results did *not* transfer wholesale, and that the difference is the lesson. No claim
