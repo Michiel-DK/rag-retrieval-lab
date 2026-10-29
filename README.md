@@ -208,3 +208,14 @@ plus the GLiClass row once it exists. It is the page the roger3000 site will lin
 proof tile ("we test retrieval methods before we sell them; here is what did nothing").
 Quote only numbers scored against the human qrels; never the judge-labelled 1.0000 as a result.
 
+**Notebook 07, chunk-level arm. Pre-registered 2026-10-29, before any chunk-level score was
+computed.** Notebook 07 pooled chunk vectors into one document vector. The Anthropic post ranks
+chunks on their own. Setup, fixed before running: nb 07's chunks (400-char windows, 80 overlap),
+encoder and committed Haiku lines, no new LLM calls. Each chunk is its own vector, and a document
+scores as its best chunk (max cosine). Arm A: plain chunks. Arm B: Haiku context line, a newline,
+the chunk.
+**Prediction: in chunk-level retrieval the context line beats plain chunks (B vs A paired nDCG@10
+CI above 0).** ConTEB's NanoBEIR null was measured at about one chunk per document; here documents
+split into about five, and in max mode chunks after the first carry no title. Falsified if the CI
+includes 0 or lies below it. Reported, not bet on: a title-prefix max arm, every max arm against
+`dense` and against its pooled nb 07 twin.
