@@ -112,6 +112,11 @@ def paired_bootstrap(
     Returns ``(mean_delta, (ci_low, ci_high), p_two_sided)`` where the CI is
     95% and ``p_two_sided`` is the fraction of resamples whose sign flips,
     doubled. A CI excluding 0 means the difference survived resampling.
+
+    The resample indices are positions, drawn from a fixed ``seed``. The same
+    scores in a different query order therefore give a slightly different CI
+    and p (third decimal on NFCorpus); ``mean_delta`` does not change. Pass
+    queries in one fixed order everywhere: this repo uses corpus order.
     """
     pairs = [
         (a, b)

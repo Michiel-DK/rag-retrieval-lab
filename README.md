@@ -29,10 +29,10 @@ queries, human qrels) by `experiments/make_readme_chart.py`; the same numbers ar
 | method | nDCG@10 | Δ vs dense (95% CI) | recall@10 | recall@50 |
 |---|---|---|---|---|
 | dense (MiniLM-L6, title+text) | 0.3167 | baseline | 0.1550 | 0.2508 |
-| BM25 (untuned, see note) | 0.2678 | −0.049 (−0.071 to −0.027), p ≈ 0 | 0.1241 | 0.1792 |
+| BM25 (untuned, see note) | 0.2678 | −0.049 (−0.072 to −0.027), p ≈ 0 | 0.1241 | 0.1792 |
 | RRF (dense + BM25) | 0.3093 | −0.007 (−0.024 to +0.009), null | 0.1477 | 0.2521 |
 | zerank-1-small rerank of the dense top-50 | 0.3881 | +0.071 (+0.055 to +0.089), p ≈ 0 | 0.1819 | 0.2508 |
-| LLM-judge rerank of the dense top-50 | **0.4052** | +0.089 (+0.072 to +0.106), p ≈ 0 | 0.1865 | 0.2508 |
+| LLM-judge rerank of the dense top-50 | **0.4052** | +0.089 (+0.071 to +0.106), p ≈ 0 | 0.1865 | 0.2508 |
 
 Note on BM25: the index is built with `.lower().split()`, no stemming and no stopword
 list (`ragexp/retrieve.py`). The 0.2678 is a ceiling for that preprocessing, not a

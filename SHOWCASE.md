@@ -30,7 +30,7 @@ From `LESSONS.md`, all deltas vs the dense baseline (MiniLM-L6), paired bootstra
 | dense baseline (nb 02) | 0.3167 | the bar: per-query scores committed so later systems can be *paired* against it |
 | BM25 (nb 03) | 0.2678 (−0.049, p ≈ 0) | **loses everywhere**: "lexical is strong on domain terminology" did not survive contact |
 | RRF fusion (nb 03) | 0.3093 (every CI straddles zero) | **null**: fusion only beat its *weaker* parent, the trivial direction |
-| LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.072 – +0.106) | the only intervention that beat the baseline |
+| LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.071 – +0.106) | the only intervention that beat the baseline |
 | zerank-1-small, 1.7B (nb 04) | 0.3881 (+0.0714) | ~80% of the LLM's lift with no per-query API cost (runs locally on a laptop; tens of seconds per query) |
 
 ## Four receipts
