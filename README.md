@@ -57,7 +57,10 @@ abstracts. Some mechanisms carry over, some don't, and the difference is the les
   the *same model*, they already live in the same space. An adapter exists to fix
   cross-space misalignment. There isn't any here, so training one can't help. That
   argument doesn't mention the corpus, so it should hold. (Notebook 05, prediction:
-  null)
+  null.) The source system had already measured this null: its trained adapter did
+  not beat a mean-pool blend. So notebook 05 tests whether a known null replicates;
+  it is not an independent bet. Its pooling arm reuses that system's blend (¼ title,
+  ¾ pooled body) unchanged, with no tuning for NFCorpus.
 - **A result that probably won't transfer.** RRF fusion *hurt* recall on the source
   system. But BM25 is strong on domain-specific terminology, which is exactly what
   NFCorpus is made of. RRF is also widely reported to help on BEIR-type data. The
