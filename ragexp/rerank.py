@@ -189,11 +189,12 @@ def sweep(
     queries are never re-run — delete the file to force a fresh sweep.
 
     The grade file is keyed by doc id, so it forgets the order the pool was
-    in, and ``rerank_by_scores`` breaks ties by that order. So each graded
-    query's pool is also recorded, in the order given, to
-    ``results/rerank/<pool_name>.json``. A query already recorded there with
-    a different order raises: its committed grades would no longer rebuild
-    the same ranking.
+    in, and ``rerank_by_scores`` breaks ties by that order. So each query's
+    pool is recorded, in the order given, to ``results/rerank/<pool_name>.json``
+    before it is graded. A query already recorded there with a different
+    order raises: its committed grades would no longer rebuild the same
+    ranking. A query already graded but not recorded also raises, since the
+    order its grades were made against is unknown.
     """
     _RERANK_DIR.mkdir(parents=True, exist_ok=True)
     path = _RERANK_DIR / f"{name}.json"
@@ -203,6 +204,12 @@ def sweep(
         if qid in recorded and recorded[qid] != list(ids):
             raise ValueError(
                 f"pool for {qid} differs from the one recorded in {pool_name}.json"
+            )
+        if qid in done and qid not in recorded:
+            raise ValueError(
+                f"{qid} is graded in {name}.json but has no pool in {pool_name}.json:"
+                " the order its grades were made against is unknown. Restore"
+                f" {pool_name}.json, or delete {qid} from {name}.json to re-grade it"
             )
 
     todo = [qid for qid in pool if qid not in done]
