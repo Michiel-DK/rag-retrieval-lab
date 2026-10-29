@@ -179,14 +179,18 @@ All six notebooks have run. `LESSONS.md` and its predictions→results table cov
 
 ### Next (filed 2026-09-21)
 
-**Notebook 04, third reranker arm: GLiClass.** [`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass)
-(Apache-2.0) scores every candidate label in one encoder pass instead of one cross-encoder pass per
-(query, doc) pair. Its paper claims ~10× a cross-encoder at comparable quality. Same slot as
-`ZerankReranker` in `ragexp/rerank.py`, same 50-doc pool, same 323 queries, same paired bootstrap
-against the dense baseline. Scores are committed under `results/rerank/` like the other two arms.
-The interesting comparison is against zerank (0.3881, 1.7B, tens of seconds per query on a laptop),
-not against the LLM judge. **Prediction: write it here before running, per the repo rule.**
-Structural invariant that must hold again: recall@50 bit-identical at 0.2508.
+**Notebook 04, third reranker arm: GLiClass. Pre-registered 2026-10-29, not yet run.**
+[`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass) (Apache-2.0) is a zero-shot
+classifier: it scores one text against a list of labels. Its paper claims ~10× a cross-encoder at
+comparable quality. Setup, fixed before running: `knowledgator/gliclass-modern-base-v3.0`, one pass
+per (query, doc) pair, with the doc as the text (cut to 1,200 chars, zerank's cut) and the query as
+the only label. The score is that label's probability. Same 50-doc dense pool, same 323 queries,
+`paired_bootstrap` in corpus order. Scores go to `results/rerank/gliclass_scores.json`.
+**Prediction: GLiClass beats the dense baseline (paired nDCG@10 CI above 0) but loses to zerank
+(paired CI against zerank below 0).** A base-size zero-shot classifier should not match a 1.7B model
+trained to rank. Falsified if either CI includes 0 or lies on the other side. Structural check:
+recall@50 bit-identical at 0.2508. The one-pass mode behind the speed claim (query as text, the 50
+docs as labels) is not tested; wall-clock time is recorded.
 
 **A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
 [rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
