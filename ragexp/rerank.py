@@ -208,7 +208,9 @@ def sweep(
     todo = [qid for qid in pool if qid not in done]
     for i, qid in enumerate(todo):
         # pool first: a kill between the two writes must not leave grades
-        # whose order was never recorded
+        # whose order was never recorded. Rewriting the whole file per query
+        # is ~200 KB at full size, milliseconds next to the grading call it
+        # precedes, and the grade file is already rewritten the same way.
         recorded[qid] = list(pool[qid])
         save_pool(recorded, pool_name)
         docs = [(d, doc_texts[d]) for d in pool[qid]]

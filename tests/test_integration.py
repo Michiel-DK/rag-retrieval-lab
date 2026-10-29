@@ -65,6 +65,7 @@ def test_committed_pool_reproduces_committed_rerank_scores(corpus):
     # Defect 2: committed files alone (pool order + grades) rebuild the
     # published per-query scores exactly, with no embedding step.
     import json
+    import math
     from pathlib import Path
 
     from ragexp.rerank import load_pool, load_sweep, rerank_by_scores
@@ -81,4 +82,17 @@ def test_committed_pool_reproduces_committed_rerank_scores(corpus):
     for name, ranking in runs.items():
         got = evaluate_run(corpus, ranking, recall_ks=(10, 50), ndcg_ks=(10,))
         want = json.loads((scores_dir / f"{name}.json").read_text())
-        assert got == want, name
+        assert set(got) == set(want), name
+        for qid, row in want.items():
+            assert set(got[qid]) == set(row), (name, qid)
+            for metric, w in row.items():
+                g = got[qid][metric]
+                if w is None or metric.startswith("recall@"):
+                    # recall is a ratio of small integers: exact, None included
+                    assert g == w, (name, qid, metric, g, w)
+                else:
+                    # ndcg sums log2 discounts, so another numpy can move the
+                    # last bit (seen: 3.3e-16). A wrong order moves it ~1e-2.
+                    assert g is not None and math.isclose(
+                        g, w, rel_tol=1e-12, abs_tol=1e-12
+                    ), (name, qid, metric, g, w)
