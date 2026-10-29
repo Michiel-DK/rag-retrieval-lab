@@ -224,3 +224,84 @@ def test_gliclass_scores_each_doc_against_the_query_as_its_only_label():
 
     assert calls == [(["abcde", "xy"], ["vitamin d"], 0.0)]
     assert scores == pytest.approx([0.1, 0.2])
+
+
+def _recording_pipeline(calls):
+    def fake_pipeline(texts, labels, threshold, batch_size, **kwargs):
+        calls.append((texts, labels, threshold, batch_size, kwargs))
+        return [[{"label": labels[0], "score": 0.5}] for _ in texts]
+
+    return fake_pipeline
+
+
+def test_gliclass_default_is_the_v3_setup_with_no_prompt_kwarg():
+    from ragexp.rerank import GliclassReranker
+
+    calls = []
+    reranker = GliclassReranker()
+    reranker._pipeline = _recording_pipeline(calls)
+    reranker.score("q", ["x" * 2000])
+
+    assert reranker.prompt is None and reranker.add_prefix_space is True
+    assert calls == [(["x" * 1200], ["q"], 0.0, 8, {})]
+
+
+def test_gliclass_prompt_is_forwarded_to_the_pipeline():
+    from ragexp.rerank import GliclassReranker
+
+    calls = []
+    reranker = GliclassReranker(prompt="P")
+    reranker._pipeline = _recording_pipeline(calls)
+    reranker.score("q", ["x" * 2000])
+
+    assert calls == [(["x" * 1200], ["q"], 0.0, 8, {"prompt": "P"})]
+
+
+@pytest.mark.parametrize("kwargs, expected", [({}, True), ({"add_prefix_space": False}, False)])
+def test_gliclass_load_passes_add_prefix_space_to_the_tokenizer(monkeypatch, kwargs, expected):
+    import gliclass
+    import transformers
+
+    from ragexp.rerank import GliclassReranker
+
+    seen = {}
+    monkeypatch.setattr(
+        transformers.AutoTokenizer,
+        "from_pretrained",
+        classmethod(lambda cls, name, **kw: seen.update(kw) or "tok"),
+    )
+    monkeypatch.setattr(
+        gliclass.GLiClassModel, "from_pretrained", classmethod(lambda cls, name: "model")
+    )
+    monkeypatch.setattr(
+        gliclass,
+        "ZeroShotClassificationPipeline",
+        lambda model, tok, **kw: (model, tok),
+    )
+    assert GliclassReranker(**kwargs)._load() == ("model", "tok")
+    assert seen == {"add_prefix_space": expected}
+
+
+def test_run_gliclass_arm_presets():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "experiments" / "run_gliclass.py"
+    spec = importlib.util.spec_from_file_location("run_gliclass", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert mod.ARMS == {
+        "v3": {
+            "model_name": "knowledgator/gliclass-modern-base-v3.0",
+            "prompt": None,
+            "add_prefix_space": True,
+            "sweep_name": "gliclass_scores",
+        },
+        "v4": {
+            "model_name": "knowledgator/gliclass-v4-edge",
+            "prompt": "Does the passage answer the query?",
+            "add_prefix_space": False,
+            "sweep_name": "gliclass_v4_scores",
+        },
+    }

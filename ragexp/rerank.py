@@ -174,6 +174,9 @@ class GliclassReranker:
     A zero-shot classifier, not a ranker: each doc is the text and the query is
     its only label, so a doc's score is the sigmoid probability that the query
     applies to it. ``max_chars`` is zerank's cut, so both arms see the same input.
+    v4 (`knowledgator/gliclass-v4-edge`) takes an instruction ``prompt`` per its
+    model card and a plain tokenizer (``add_prefix_space=False``); the defaults
+    (no prompt, prefix space on) are the committed v3 setup.
     """
 
     def __init__(
@@ -181,10 +184,14 @@ class GliclassReranker:
         model_name: str = "knowledgator/gliclass-modern-base-v3.0",
         batch_size: int = 8,
         max_chars: int = 1200,
+        prompt: Optional[str] = None,
+        add_prefix_space: bool = True,
     ):
         self.model_name = model_name
         self.batch_size = batch_size
         self.max_chars = max_chars
+        self.prompt = prompt
+        self.add_prefix_space = add_prefix_space
         self._pipeline = None
 
     def _load(self):
@@ -196,7 +203,9 @@ class GliclassReranker:
             device = "mps" if torch.backends.mps.is_available() else "cpu"
             self._pipeline = ZeroShotClassificationPipeline(
                 GLiClassModel.from_pretrained(self.model_name),
-                AutoTokenizer.from_pretrained(self.model_name, add_prefix_space=True),
+                AutoTokenizer.from_pretrained(
+                    self.model_name, add_prefix_space=self.add_prefix_space
+                ),
                 classification_type="multi-label",
                 device=device,
                 progress_bar=False,
@@ -206,11 +215,13 @@ class GliclassReranker:
     def score(self, query: str, texts: Sequence[str]) -> List[float]:
         pipeline = self._load()
         # threshold 0.0 keeps every label, so each result holds exactly one score
+        kwargs = {} if self.prompt is None else {"prompt": self.prompt}
         results = pipeline(
             [t[: self.max_chars] for t in texts],
             [query],
             threshold=0.0,
             batch_size=self.batch_size,
+            **kwargs,
         )
         return [float(r[0]["score"]) for r in results]
 
