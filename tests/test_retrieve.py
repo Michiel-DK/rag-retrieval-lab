@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from ragexp.data import Doc
-from ragexp.retrieve import _chunks, bm25, build_bm25, dense, pool_doc_matrix, rrf
+from ragexp.retrieve import _chunks, best_chunk_scores, bm25, build_bm25, chunk_matrix, dense, pool_doc_matrix, rrf
 
 
 class FakeEmbedder:
@@ -178,3 +178,20 @@ def test_pool_doc_matrix_without_prefixes_matches_plain_pool():
 def test_pool_doc_matrix_prefix_count_must_match_chunks():
     with pytest.raises(ValueError):
         pool_doc_matrix([Doc("d1", "t", "x")], HashEmbedder(), mode="pool", chunk_prefixes={"d1": ["a", "b"]})
+
+
+def test_chunk_matrix_rows_and_bounds_follow_the_chunks():
+    docs = [Doc("d1", "Short doc", "one chunk only"), Doc("d2", "Long doc", "lorem ipsum " * 100)]
+    n2 = len(_chunks(docs[1].text))
+    emb = HashEmbedder()
+    vecs, bounds = chunk_matrix(docs, emb, chunk_prefixes={"d1": ["ctx"]})
+    assert emb.calls[-1] == ["ctx\none chunk only"] + _chunks(docs[1].text)
+    assert vecs.shape[0] == 1 + n2
+    assert list(bounds) == [0, 1, 1 + n2]
+
+
+def test_best_chunk_scores_takes_each_docs_max_chunk():
+    chunk_vecs = np.array([[1.0, 0.0], [0.0, 1.0], [0.6, 0.8], [-1.0, 0.0]])
+    bounds = np.array([0, 1, 4])  # d0 owns row 0; d1 owns rows 1-3
+    scores = best_chunk_scores(np.array([[0.0, 1.0], [1.0, 0.0]]), chunk_vecs, bounds)
+    np.testing.assert_allclose(scores, [[0.0, 1.0], [1.0, 0.6]])
