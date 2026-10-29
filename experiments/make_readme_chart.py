@@ -2,7 +2,8 @@
 
 Every number comes from the committed per-query score files under
 ``results/scores/*.json`` (n = 323 NFCorpus queries, human qrels), the same
-source LESSONS.md recomputes from. Nothing is read off a notebook cell.
+source LESSONS.md recomputes from. Nothing is read off a notebook cell. The
+corpus is loaded only for its query order, so the CIs match the notebooks'.
 
     python experiments/make_readme_chart.py
 
@@ -22,6 +23,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from ragexp.data import load_nfcorpus  # noqa: E402
 from ragexp.metrics import independent_ci, paired_bootstrap  # noqa: E402
 from ragexp.runs import load_scores, metric_vector, summarize  # noqa: E402
 
@@ -38,7 +40,10 @@ OUT = ROOT / "docs" / "img" / "ndcg10-by-method.png"
 
 def main() -> None:
     scores = {name: load_scores(name) for name, _ in SYSTEMS}
-    qids = sorted(scores["dense"])
+    # Corpus query order, as in the notebooks: the bootstrap resamples by
+    # position, so the order sets which CI a fixed seed produces.
+    qids = [q.query_id for q in load_nfcorpus().queries]
+    assert set(qids) == set(scores["dense"]), "score files must cover the corpus queries"
     dense_vec = metric_vector(scores["dense"], "ndcg@10", qids)
 
     rows = []
