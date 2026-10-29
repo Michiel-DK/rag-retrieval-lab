@@ -59,3 +59,40 @@ def test_rrf_fuses_dense_and_bm25(corpus, doc_matrix):
     fused = rrf([ranked_d, ranked_b], depth=1000)
     r = recall_at_k(fused, corpus.relevant_ids(q.query_id), k=50)
     assert r is not None and r > 0.2
+
+
+def test_committed_pool_reproduces_committed_rerank_scores(corpus):
+    # Defect 2: committed files alone (pool order + grades) rebuild the
+    # published per-query scores exactly, with no embedding step.
+    import json
+    import math
+    from pathlib import Path
+
+    from ragexp.rerank import load_pool, load_sweep, rerank_by_scores
+    from ragexp.runs import evaluate_run
+
+    scores_dir = Path(__file__).resolve().parent.parent / "results" / "scores"
+    pool = load_pool("dense_pool")
+    llm, zr = load_sweep("llm_grades"), load_sweep("zerank_scores")
+    runs = {
+        "dense": pool,  # the un-reranked pool is the dense baseline at k <= 50
+        "rerank_llm": {q: rerank_by_scores(pool[q], llm[q]) for q in pool},
+        "rerank_zerank": {q: rerank_by_scores(pool[q], zr[q]) for q in pool},
+    }
+    for name, ranking in runs.items():
+        got = evaluate_run(corpus, ranking, recall_ks=(10, 50), ndcg_ks=(10,))
+        want = json.loads((scores_dir / f"{name}.json").read_text())
+        assert set(got) == set(want), name
+        for qid, row in want.items():
+            assert set(got[qid]) == set(row), (name, qid)
+            for metric, w in row.items():
+                g = got[qid][metric]
+                if w is None or metric.startswith("recall@"):
+                    # recall is a ratio of small integers: exact, None included
+                    assert g == w, (name, qid, metric, g, w)
+                else:
+                    # ndcg sums log2 discounts, so another numpy can move the
+                    # last bit (seen: 3.3e-16). Sorting the pool by doc id moves it up to 0.52.
+                    assert g is not None and math.isclose(
+                        g, w, rel_tol=1e-12, abs_tol=1e-12
+                    ), (name, qid, metric, g, w)

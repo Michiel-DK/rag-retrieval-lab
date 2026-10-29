@@ -99,3 +99,53 @@ def test_sweep_partial_checkpoint_only_runs_missing(tmp_path, monkeypatch):
                 fake_score, verbose=False)
     assert calls == ["b"]
     assert out["q1"] == {"d1": 2.0}
+
+
+# ── pool order (defect 2) ─────────────────────────────────────────────────
+
+
+def test_save_load_pool_preserves_list_order(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    pool = {"q2": ["d9", "d1", "d5"], "q1": ["d3", "d2"]}
+    rr.save_pool(pool, "p")
+    assert rr.load_pool("p") == pool
+    assert rr.load_pool("p")["q2"] == ["d9", "d1", "d5"]  # not sorted
+
+
+def test_sweep_records_pool_in_order_given(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    pool = {"q1": ["d3", "d1", "d2"]}
+    sweep("t", pool, {"q1": "one"}, {"d1": "x", "d2": "y", "d3": "z"},
+          lambda q, docs: {d: 1.0 for d, _ in docs}, verbose=False, pool_name="p")
+    assert json.loads((tmp_path / "p.json").read_text()) == {"q1": ["d3", "d1", "d2"]}
+    # every score ties, so only the stored order can rebuild the ranking
+    grades = json.loads((tmp_path / "t.json").read_text())
+    assert rerank_by_scores(rr.load_pool("p")["q1"], grades["q1"]) == ["d3", "d1", "d2"]
+
+
+def test_sweep_rejects_pool_that_disagrees_with_recorded(tmp_path, monkeypatch):
+    import ragexp.rerank as rr
+
+    monkeypatch.setattr(rr, "_RERANK_DIR", tmp_path)
+    rr.save_pool({"q1": ["d1", "d2"]}, "p")
+    with pytest.raises(ValueError, match="differs"):
+        sweep("t", {"q1": ["d2", "d1"]}, {"q1": "a"}, {"d1": "x", "d2": "y"},
+              lambda q, docs: {d: 0.0 for d, _ in docs}, verbose=False, pool_name="p")
+
+
+def test_committed_dense_pool_matches_committed_sweeps():
+    # Reads committed files only. Checks coverage and sets, not order: the
+    # order is checked against the committed scores in test_integration.py.
+    from ragexp.rerank import load_pool, load_sweep
+
+    pool = load_pool("dense_pool")
+    llm, zr = load_sweep("llm_grades"), load_sweep("zerank_scores")
+    assert len(llm) == 323
+    assert set(pool) == set(llm) == set(zr)
+    for qid, ids in pool.items():
+        assert len(ids) == 50 and len(set(ids)) == 50, qid
+        assert set(ids) == set(llm[qid]) == set(zr[qid]), qid

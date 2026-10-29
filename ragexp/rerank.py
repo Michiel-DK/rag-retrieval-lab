@@ -179,6 +179,7 @@ def sweep(
     doc_texts: Dict[str, str],
     score_fn: Callable[[str, Sequence[Tuple[str, str]]], Dict[str, float]],
     verbose: bool = True,
+    pool_name: str = "dense_pool",
 ) -> Dict[str, Dict[str, float]]:
     """Run ``score_fn`` over every query's pool, checkpointing per query.
 
@@ -186,13 +187,32 @@ def sweep(
     Results persist to ``results/rerank/<name>.json`` after every query, so a
     killed or rate-limited sweep resumes instead of restarting. Already-scored
     queries are never re-run — delete the file to force a fresh sweep.
+
+    The grade file is keyed by doc id, so it forgets the order the pool was
+    in, and ``rerank_by_scores`` breaks ties by that order. So each graded
+    query's pool is also recorded, in the order given, to
+    ``results/rerank/<pool_name>.json``. A query already recorded there with
+    a different order raises: its committed grades would no longer rebuild
+    the same ranking.
     """
     _RERANK_DIR.mkdir(parents=True, exist_ok=True)
     path = _RERANK_DIR / f"{name}.json"
     done = _load_checkpoint(path)
+    recorded = load_pool(pool_name)
+    for qid, ids in pool.items():
+        if qid in recorded and recorded[qid] != list(ids):
+            raise ValueError(
+                f"pool for {qid} differs from the one recorded in {pool_name}.json"
+            )
 
     todo = [qid for qid in pool if qid not in done]
     for i, qid in enumerate(todo):
+        # pool first: a kill between the two writes must not leave grades
+        # whose order was never recorded. Rewriting the whole file per query
+        # is ~200 KB at full size, milliseconds next to the grading call it
+        # precedes, and the grade file is already rewritten the same way.
+        recorded[qid] = list(pool[qid])
+        save_pool(recorded, pool_name)
         docs = [(d, doc_texts[d]) for d in pool[qid]]
         done[qid] = score_fn(query_texts[qid], docs)
         path.write_text(json.dumps(done, indent=0, sort_keys=True))
@@ -204,3 +224,16 @@ def sweep(
 def load_sweep(name: str) -> Dict[str, Dict[str, float]]:
     """Read a committed sweep — the no-LLM reproduction path."""
     return _load_checkpoint(_RERANK_DIR / f"{name}.json")
+
+
+def save_pool(pool: Pool, name: str = "dense_pool") -> None:
+    """Write a candidate pool, each query's doc list in rank order."""
+    _RERANK_DIR.mkdir(parents=True, exist_ok=True)
+    # sort_keys orders the query ids only; the doc lists keep their order.
+    (_RERANK_DIR / f"{name}.json").write_text(json.dumps(pool, indent=0, sort_keys=True))
+
+
+def load_pool(name: str = "dense_pool") -> Pool:
+    """Read a committed pool: the tie-break order ``rerank_by_scores`` needs."""
+    path = _RERANK_DIR / f"{name}.json"
+    return json.loads(path.read_text()) if path.exists() else {}
