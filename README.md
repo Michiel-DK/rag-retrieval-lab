@@ -201,6 +201,19 @@ docs as labels) is not tested; wall-clock time is recorded.
 (−0.0386, CI [−0.0601, −0.0177], p = 0.0004), and below zerank (−0.1100). It is not a broken
 harness: a random shuffle of the pools scores 0.114. See the end of notebook 04.
 
+**Notebook 04, fourth reranker arm: GLiClass v4. Pre-registered 2026-10-29, before any NFCorpus pair
+was scored.** The literature check after the v3 run (end of notebook 04) found that v3 had no retrieval
+training. [`knowledgator/gliclass-v4-edge`](https://huggingface.co/knowledgator/gliclass-v4-edge)
+(0.4B, Apache-2.0, released 2026-10-16) is the first public GLiClass whose card shows reranking, with
+an instruction prompt. Setup, fixed before running: the same 50-doc dense pools, one pass per
+(query, doc) pair, the doc as the text (cut to 1,200 chars, as for zerank and v3), the query as the
+only label, the card's prompt `"Does the passage answer the query?"`, threshold 0, ties broken by
+dense order. Scores go to `results/rerank/gliclass_v4_scores.json`.
+**Prediction: GLiClass v4 beats the dense baseline (paired nDCG@10 CI above 0) but loses to zerank
+(paired CI against zerank below 0).** Falsified if either CI includes 0 or lies on the other side.
+Reported, not bet on: v4 against v3, recall@10, and recall@50 bit-identical at 0.2508. Known
+confound: the checkpoint and the prompt both change from v3, so a win cannot be split between them.
+
 **A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
 [rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
 Pages (`testing-the-tests.html`) and links it from its README. Do the same here from `SHOWCASE.md`
