@@ -1,6 +1,6 @@
 # LESSONS.md — every experiment: what / number / verdict / lesson
 
-The closing artifact for all six notebooks, and all six ran. Except where named below, every
+The closing artifact for all seven notebooks, and all seven ran. Except where named below, every
 number is **recomputed from the committed per-query score files**, not read off a notebook cell.
 The source is `results/scores/*.json`: n = 323 NFCorpus queries, scored against the
 dataset's human qrels. The notebook 06 rows are one exception: they use MSLR-WEB10K Fold 1
@@ -20,6 +20,7 @@ train-vs-eval row. Each needs the encoder or the training run.
 | 04 | `reranking` | **nDCG rises, recall@50 does not move**: a reranker reorders a fixed pool, it cannot change what's in it | ✅ **Held, both halves, both rerankers**: nDCG@10 0.3167 → **0.4052** (LLM judge, p ≈ 0) / **0.3881** (zerank-1-small); recall@50 **frozen bit-for-bit at 0.2508** for all three systems |
 | 05 | `pooling-vs-summary` | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | ✅ **Split**: pooling helps held against title-only (nDCG@10 +0.0255, p=0.0002) and failed against `dense` (title+text): recall@10 -0.0013, recall@50 -0.0053, nDCG@10 -0.0028, all three null over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), recall@10 -0.0031 (p=0.39), with recall@50 -0.0245 (p=0.0112) a significant loss |
 | 06 | `learning-to-rank` | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | ✅ **Held**: test nDCG@10 0.327 (best feature, picked on vali) → **0.492** (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries |
+| 07 | `contextual-retrieval` | **The LLM context line beats plain chunks, but not the title**: arm 3 vs arm 1 CI above 0, arm 3 vs arm 2 CI includes 0 | ❌ **First half failed, second held**: arm 3 vs arm 1 nDCG@10 +0.0051, CI [−0.0011, +0.0117]; vs arm 2 +0.0025, CI includes 0. All three chunk arms tie title+text dense |
 
 ## The ledger
 
@@ -44,6 +45,9 @@ train-vs-eval row. Each needs the encoder or the training run.
 | InfoNCE adapter vs `W=I`, 107 held-out queries (nb 05) | recall@10 -0.0031 (p=0.39), nDCG@10 -0.0063 (p=0.28), recall@50 -0.0245 (p=0.0112) | prediction held | a linear adapter fixes cross-space misalignment, and one encoder for both sides leaves none to fix |
 | adapter train vs eval (nb 05) | nDCG@10 +0.0072 on 215 train queries, -0.0063 on 107 held-out | overfit, as expected | 147,456 parameters over 215 queries memorise the split; only the held-out number is evidence |
 | LambdaMART vs best single feature (MSLR-WEB10K Fold 1, nb 06) | nDCG@10 0.327 → 0.492, +0.165, CI [+0.155, +0.175], p ≈ 0 | learned ranker wins, as predicted | on features designed to be combined, a listwise ranker beats the strongest single signal by a wide margin; pick the baseline feature on vali, never on test |
+| Haiku context line per chunk vs plain chunks (nb 07) | nDCG@10 +0.0051, CI [−0.0011, +0.0117], p = 0.11; recall@10 and recall@50 null | predicted to win, did not | 18,835 LLM-written lines bought nothing measurable on short abstracts. Context restores what a chunk lost from its document, and a ~1.7k-char abstract in five chunks loses little |
+| title prefixed to every chunk vs plain chunks (nb 07) | nDCG@10 +0.0026, CI [−0.0070, +0.0120], p = 0.60 | the free control nulled too | the pooled vector already blends in the title vector, so a per-chunk title repeats it |
+| every chunk arm vs `dense` (title+text) (nb 07) | nDCG@10 −0.0001 (title arm), +0.0024 (context arm), both p > 0.7 | null | on short documents, embedding the whole document once is as good as any chunking scheme tested here |
 
 ## The one-line version
 

@@ -9,7 +9,8 @@ Methods:
 - ``dense``      — cosine similarity over embeddings (the baseline)
 - ``bm25``       — lexical / term-overlap
 - ``rrf``        — Reciprocal Rank Fusion of two rankings (nb 03)
-- ``pool_doc``   — title-only vs title+pooled-chunks embedding (nb 05)
+- ``pool_doc``   — title-only vs title+pooled-chunks embedding (nb 05); with
+  per-chunk prefixes, the contextual-retrieval arms (nb 07)
 """
 from __future__ import annotations
 
@@ -108,6 +109,7 @@ def pool_doc_matrix(
     docs: Sequence[Doc],
     embedder: Embedder,
     mode: str = "title",
+    chunk_prefixes: Optional[Dict[str, List[str]]] = None,
 ) -> np.ndarray:
     """Build the (n, dim) doc matrix under different representations.
 
@@ -118,6 +120,10 @@ def pool_doc_matrix(
     nb 05's question: does pooling the body recover signal the title alone
     misses? ``pool`` is the analogue of the source system's portfolio-pooled
     firm vector.
+
+    ``chunk_prefixes`` (``pool`` only, nb 07) maps a doc id to one prefix per
+    chunk; each chunk is embedded as ``prefix + "\n" + chunk``. An empty prefix,
+    or a doc missing from the map, leaves its chunks as they are.
     """
     if mode == "title":
         return embedder.encode([d.title or d.text[:80] for d in docs])
@@ -128,6 +134,8 @@ def pool_doc_matrix(
         # One encode call over every doc's chunks, then split back per doc:
         # per-doc calls wrote one cache file per document.
         per_doc = [_chunks(d.text) for d in docs]
+        if chunk_prefixes is not None:
+            per_doc = [_prefixed(ch, chunk_prefixes.get(d.doc_id)) for d, ch in zip(docs, per_doc)]
         bounds = np.cumsum([0] + [len(ch) for ch in per_doc])
         chunk_vecs = embedder.encode([c for ch in per_doc for c in ch])
         pooled = np.zeros_like(title_vecs)
@@ -137,3 +145,11 @@ def pool_doc_matrix(
         norms = np.linalg.norm(blend, axis=1, keepdims=True)
         return blend / np.clip(norms, 1e-8, None)
     raise ValueError(f"unknown mode {mode!r}")
+
+
+def _prefixed(chunks: List[str], prefixes: Optional[List[str]]) -> List[str]:
+    if prefixes is None:
+        return chunks
+    if len(prefixes) != len(chunks):
+        raise ValueError(f"{len(prefixes)} prefixes for {len(chunks)} chunks")
+    return [f"{p}\n{c}" if p else c for p, c in zip(prefixes, chunks)]

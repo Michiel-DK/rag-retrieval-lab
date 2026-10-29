@@ -156,3 +156,25 @@ def test_pool_doc_matrix_pool_encodes_in_two_calls():
 def test_pool_doc_matrix_unknown_mode_raises():
     with pytest.raises(ValueError):
         pool_doc_matrix([Doc("d1", "t", "x")], HashEmbedder(), mode="nope")
+
+
+def test_pool_doc_matrix_prefixes_change_only_the_chunk_texts():
+    docs = [Doc("d1", "Short doc", "one chunk only"), Doc("d2", "Long doc", "lorem ipsum " * 100)]
+    n2 = len(_chunks(docs[1].text))
+    emb = HashEmbedder()
+    pool_doc_matrix(docs, emb, mode="pool", chunk_prefixes={"d1": ["ctx"], "d2": [""] * n2})
+    assert emb.calls[-1][0] == "ctx\none chunk only"
+    assert emb.calls[-1][1:] == _chunks(docs[1].text)  # empty prefix: chunk as is
+    assert emb.calls[-2] == ["Short doc", "Long doc"]  # title vectors untouched
+
+
+def test_pool_doc_matrix_without_prefixes_matches_plain_pool():
+    docs = [Doc("d1", "Short doc", "one chunk only"), Doc("d2", "Mid doc", "dolor sit amet " * 40)]
+    plain = pool_doc_matrix(docs, HashEmbedder(), mode="pool")
+    empty = pool_doc_matrix(docs, HashEmbedder(), mode="pool", chunk_prefixes={})
+    np.testing.assert_array_equal(plain, empty)
+
+
+def test_pool_doc_matrix_prefix_count_must_match_chunks():
+    with pytest.raises(ValueError):
+        pool_doc_matrix([Doc("d1", "t", "x")], HashEmbedder(), mode="pool", chunk_prefixes={"d1": ["a", "b"]})
