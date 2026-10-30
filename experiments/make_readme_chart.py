@@ -31,6 +31,8 @@ SYSTEMS = [
     ("dense", "dense\n(MiniLM-L6)"),
     ("bm25", "BM25\n(untuned)"),
     ("rrf", "RRF\n(dense+BM25)"),
+    ("rerank_gliclass", "GLiClass v3\nrerank"),
+    ("rerank_gliclass_v4", "GLiClass v4\nrerank"),
     ("rerank_zerank", "zerank-1-small\nrerank"),
     ("rerank_llm", "LLM-judge\nrerank"),
 ]
@@ -65,13 +67,13 @@ def main() -> None:
 
     # ── chart ──────────────────────────────────────────────────────────────
     bg, fg, grid = "#f4f5f7", "#1f2937", "#d1d5db"
-    bar = ["#5b6b7f", "#8a97a6", "#8a97a6", "#3f5f7f", "#2f4a63"]
+    bar = ["#5b6b7f", "#8a97a6", "#8a97a6", "#8a97a6", "#8a97a6", "#3f5f7f", "#2f4a63"]
     labels = [lab for _, lab in SYSTEMS]
     means = [r[1] for r in rows]
     lo = [r[1] - r[2][0] for r in rows]
     hi = [r[2][1] - r[1] for r in rows]
 
-    fig, ax = plt.subplots(figsize=(8, 4.2), dpi=130)
+    fig, ax = plt.subplots(figsize=(9.5, 4.2), dpi=130)
     fig.patch.set_facecolor(bg)
     ax.set_facecolor(bg)
     x = range(len(rows))

@@ -1,7 +1,7 @@
 # rag-retrieval-lab
 
 Retrieval methods explained by running them on NFCorpus, predictions written down first. Read
-`SHOWCASE.md` for the frozen write-up and `LESSONS.md` before changing any method.
+`SHOWCASE.md` for the write-up of notebooks 01 to 04 and `LESSONS.md` before changing any method.
 
 ## Bearings
 

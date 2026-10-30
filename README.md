@@ -7,7 +7,7 @@
 ![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them: predictions written down first.**
-**The case with receipts (frozen write-up): [`SHOWCASE.md`](SHOWCASE.md).**
+**The write-up of notebooks 01 to 04, with receipts: [`SHOWCASE.md`](SHOWCASE.md).**
 
 Every RAG tutorial shows you hybrid search, RRF fusion, and an LLM reranker, then tells
 you they help. This repo runs each one on a real benchmark and reports what actually
@@ -31,6 +31,8 @@ queries, human qrels) by `experiments/make_readme_chart.py`; the same numbers ar
 | dense (MiniLM-L6, title+text) | 0.3167 | baseline | 0.1550 | 0.2508 |
 | BM25 (untuned, see note) | 0.2678 | −0.049 (−0.072 to −0.027), p ≈ 0 | 0.1241 | 0.1792 |
 | RRF (dense + BM25) | 0.3093 | −0.007 (−0.024 to +0.009), null | 0.1477 | 0.2521 |
+| GLiClass v3 rerank of the dense top-50 | 0.2781 | −0.039 (−0.060 to −0.018), p < 0.001 | 0.1245 | 0.2508 |
+| GLiClass v4 rerank of the dense top-50 | 0.3218 | +0.005 (−0.015 to +0.025), null | 0.1529 | 0.2508 |
 | zerank-1-small rerank of the dense top-50 | 0.3881 | +0.071 (+0.055 to +0.089), p ≈ 0 | 0.1819 | 0.2508 |
 | LLM-judge rerank of the dense top-50 | **0.4052** | +0.089 (+0.071 to +0.106), p ≈ 0 | 0.1865 | 0.2508 |
 
@@ -39,7 +41,7 @@ list and no punctuation stripping (`ragexp/retrieve.py`). Over the 323 test quer
 73 of the 1,064 query tokens start or end with a non-alphanumeric character, such as
 `cancer?`. A token like that matches only an identically punctuated document token.
 The 0.2678 is a ceiling for that preprocessing, not a
-verdict on BM25. Note on recall@50: the two rerankers permute the dense top-50, so their
+verdict on BM25. Note on recall@50: the rerankers permute the dense top-50, so their
 recall@50 is identical to dense by construction; recall@10 moves because the reranker
 changes which of those 50 reach the top-10.
 
@@ -158,7 +160,10 @@ ragexp/          the library: importable, unit-testable, no notebook magic
   embed.py       sentence-transformers wrapper              [done]
   retrieve.py    dense / bm25 / rrf / pooling               [done]
   runs.py        per-query scoring + committed score files  [done]
-  rerank.py      LLM judge + off-the-shelf reranker         [done]
+  rerank.py      LLM judge, zerank, GLiClass rerankers      [done]
+  adapter.py     linear query adapter (InfoNCE), nb 05      [done]
+  ltr.py         LETOR loading + LambdaMART helpers, nb 06  [done]
+  contextualize.py  LLM context lines for chunks, nb 07     [done]
 notebooks/       the teaching layer: narrative, plots, lessons (all seven run)
 experiments/     scripts that produce the committed numbers
 results/         committed snapshots (so notebooks don't need to re-run everything)
@@ -171,19 +176,24 @@ claims are testable and the notebooks stay readable.
 
 ## Status
 
-All seven notebooks have run. The library is tested. The notebooks are executed with
-outputs committed. Every open prediction resolved. 03 has RRF nulling against dense.
-04 has nDCG rising while recall@50 stays frozen, as it structurally must. 05 splits:
-pooling beats title-only but nulls against dense, and the adapter nulls. 06 has
-LambdaMART beating the best single feature. 07 has LLM-written context lines
-nulling against plain chunks, and every chunk arm tying dense.
+All seven notebooks have run, with outputs committed, and every pre-registered prediction
+has resolved. `LESSONS.md` and its predictions→results table cover all seven.
 
-Notebook 04's LLM-judge grades and zerank scores are committed under
+- 03: BM25 loses to dense and RRF nulls against it.
+- 04: both rerankers lift nDCG while recall@50 stays frozen, as it structurally must. The two
+  GLiClass arms do not beat dense: v3 is below it, v4 ties it.
+- 05: pooling beats title-only but nulls against dense, and the adapter nulls.
+- 06: LambdaMART beats the best single feature.
+- 07: LLM-written context lines null against plain chunks when chunks are pooled. Ranked chunk
+  by chunk, they help, and a free title prefix helps just as much.
+
+Notebook 04's LLM-judge grades, zerank scores and GLiClass scores are committed under
 `results/rerank/`, so everything reproduces without an API key or a GPU.
 
-All seven notebooks have run. `LESSONS.md` and its predictions→results table cover all seven.
+Scope: every NFCorpus verdict is a fact about one small corpus, one small embedder
+(MiniLM-L6) and an untuned BM25. Notebook 06 is one MSLR fold with fixed settings.
 
-### Next (filed 2026-09-21)
+### Later arms (pre-registered 2026-10-29, all resolved)
 
 **Notebook 04, third reranker arm: GLiClass. Pre-registered 2026-10-29 (`bdc024b`), run the same day.**
 [`knowledgator/GLiClass`](https://github.com/Knowledgator/GLiClass) (Apache-2.0) is a zero-shot
@@ -218,13 +228,6 @@ CI [−0.0147, +0.0251], p = 0.63), and below zerank (−0.0664, CI [−0.0835, 
 (+0.0436, reported). recall@50 stayed frozen. 1,917 tied scores fall back to dense order. The sweep
 took 31,036 s on a shared laptop CPU. See the end of notebook 04.
 
-**A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
-[rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
-Pages (`testing-the-tests.html`) and links it from its README. Do the same here from `SHOWCASE.md`
-plus the GLiClass row once it exists. It is the page the roger3000 site will link as its third
-proof tile ("we test retrieval methods before we sell them; here is what did nothing").
-Quote only numbers scored against the human qrels; never the judge-labelled 1.0000 as a result.
-
 **Notebook 07, chunk-level arm. Pre-registered 2026-10-29, before any chunk-level score was
 computed.** Notebook 07 pooled chunk vectors into one document vector. The Anthropic post ranks
 chunks on their own. Setup, fixed before running: nb 07's chunks (400-char windows, 80 overlap),
@@ -239,3 +242,12 @@ includes 0 or lies below it. Reported, not bet on: a title-prefix max arm, every
 **Result: held.** Haiku context against plain chunks, max-scored: nDCG@10 +0.0238, CI [+0.0123,
 +0.0358]. The free title prefix gains the same (+0.0245; context against title −0.0006, CI includes 0).
 See the end of notebook 07.
+
+### Next
+
+**A hosted explainer.** `SHOWCASE.md` is the write-up of notebooks 01 to 04; the sibling repo
+[rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
+Pages (`testing-the-tests.html`) and links it from its README. Do the same here from `SHOWCASE.md`
+plus the GLiClass rows. It is the page the roger3000 site will link as its third
+proof tile ("we test retrieval methods before we sell them; here is what did nothing").
+Quote only numbers scored against the human qrels; never the judge-labelled 1.0000 as a result.
