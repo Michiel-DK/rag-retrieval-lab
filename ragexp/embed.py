@@ -2,8 +2,8 @@
 
 One small model (`all-MiniLM-L6-v2`, 384-dim) so the whole corpus embeds in
 under a minute on a laptop and the repo has no GPU dependency. The point of
-the lab is the *methods*, not the leaderboard — a bigger embedder would raise
-every number by a constant and change none of the lessons.
+the lab is the *methods*, not the leaderboard. A bigger embedder would change
+the numbers. Whether it would change the lessons is untested here.
 
 Embeddings are cached to ``results/emb/`` keyed by (model, text-hash) so
 notebooks re-run in seconds after the first pass. The cache is content-
