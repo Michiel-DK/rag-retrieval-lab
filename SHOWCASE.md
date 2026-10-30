@@ -1,6 +1,9 @@
 # Predict first, then run. Nulls included.
 
-> **Frozen write-up, 2026-08-24.** The repo keeps moving; this page doesn't. Every number
+> **Write-up of notebooks 01-04, dated 2026-08-24.** It has been corrected since where the
+> 2026-09 audit (`docs/defects-from-radar-2026-09-04.md`) found errors. Notebooks 05 and 06
+> are noted in the open section. Notebook 07 and the GLiClass arms of notebook 04 are
+> covered in `README.md` and `LESSONS.md`, not here. Every number
 > below traces to a committed file, named inline. None of it is read off a notebook cell.
 > The recomputation source is the per-query score files. Where a widely-taught technique
 > failed here, the failure is the content, not an embarrassment to edit out.

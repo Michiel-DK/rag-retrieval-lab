@@ -3,7 +3,7 @@
 ![python](https://img.shields.io/badge/python-3.12-3f5f7f)
 ![dataset](https://img.shields.io/badge/dataset-NFCorpus%20(BEIR)%2C%20323%20queries-3f5f7f)
 ![notebooks](https://img.shields.io/badge/notebooks-7%20of%207%20run-8a97a6)
-![tests](https://img.shields.io/badge/tests-83%20pytest-3f5f7f)
+![tests](https://img.shields.io/badge/tests-88%20pytest-3f5f7f)
 ![tests](https://github.com/Michiel-DK/rag-retrieval-lab/actions/workflows/tests.yml/badge.svg)
 
 **Retrieval methods, explained by running them: predictions written down first.**
@@ -71,7 +71,8 @@ abstracts. Some mechanisms carry over, some don't, and the difference is the les
   prediction: genuinely unsure, and that's the honest answer)
 
 All seven notebooks have run, and the predictions for notebooks 03 to 07 have all
-**resolved**. The notebooks carry the numbers and the readings.
+**resolved**, except one arm: the GLiClass v4 arm in notebook 04 is pre-registered and
+its run is in progress. The notebooks carry the numbers and the readings.
 
 ## The dataset
 
@@ -162,7 +163,7 @@ ragexp/          the library: importable, unit-testable, no notebook magic
 notebooks/       the teaching layer: narrative, plots, lessons (all seven run)
 experiments/     scripts that produce the committed numbers
 results/         committed snapshots (so notebooks don't need to re-run everything)
-tests/           pytest suite (81 tests; `-m integration` needs local HF caches)
+tests/           pytest suite (88 tests; `-m integration` needs local HF caches)
 LESSONS.md       every experiment: what / number / verdict / lesson  [done]
 ```
 
@@ -172,7 +173,7 @@ claims are testable and the notebooks stay readable.
 ## Status
 
 All seven notebooks have run. The library is tested. The notebooks are executed with
-outputs committed. Every open prediction resolved. 03 has RRF nulling against dense.
+outputs committed. Every open prediction resolved except the GLiClass v4 arm in notebook 04, whose run is in progress. 03 has RRF nulling against dense.
 04 has nDCG rising while recall@50 stays frozen, as it structurally must. 05 splits:
 pooling beats title-only but nulls against dense, and the adapter nulls. 06 has
 LambdaMART beating the best single feature. 07 has LLM-written context lines
