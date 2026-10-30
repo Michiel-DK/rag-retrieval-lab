@@ -71,8 +71,7 @@ abstracts. Some mechanisms carry over, some don't, and the difference is the les
   prediction: genuinely unsure, and that's the honest answer)
 
 All seven notebooks have run, and the predictions for notebooks 03 to 07 have all
-**resolved**, except one arm: the GLiClass v4 arm in notebook 04 is pre-registered and
-its run is in progress. The notebooks carry the numbers and the readings.
+**resolved**. The notebooks carry the numbers and the readings.
 
 ## The dataset
 
@@ -100,7 +99,7 @@ actually happened. In order.
 | 01 | `the-ruler` | recall@k, nDCG@k, paired bootstrap | *No prediction; this builds the instrument.* Shows why undefined must be `None` not `0.0`, and why two overlapping CIs don't mean "no difference" | ✅ run; both demos land (zero-poisoning understates 40%; paired p≈0 where independent CIs overlap) |
 | 02 | `dense-baseline` | embed, rank by cosine | *No prediction; this is the bar.* | ✅ run; nDCG@10 0.317; per-query scores committed |
 | 03 | `lexical-and-fusion` | BM25, Reciprocal Rank Fusion | **Unsure.** Hurt on the source system; BM25 should be strong on bio-medical terminology, so it may help here. Genuinely open | **Resolved:** BM25 loses to dense everywhere (with the caveat that BM25 here is untuned: `.lower().split()`, no stemming or stopwords, no punctuation stripping, so this is a preprocessing ceiling, not a verdict on BM25); **RRF nulls vs dense**: the source system's null transferred. Fusion only beats the weaker parent |
-| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0. Third arm (GLiClass, pre-registered 2026-10-29): **half failed**, 0.278, below dense (−0.039, CI below 0) |
+| 04 | `reranking` | LLM reranker, off-the-shelf reranker | **nDCG rises, recall@50 doesn't move.** Reranking permutes a fixed 50-doc pool, so it cannot change which docs are in the pool. recall@10 can move, because reranking changes which pool docs reach the top-10 | **Held, both halves:** nDCG@10 0.317→0.405 (LLM, p≈0) / 0.388 (zerank); recall@50 frozen bit-for-bit at 0.2508; recall@10 moved +0.032 (LLM) / +0.027 (zerank). Bonus: judge grading its own homework scores a meaningless 1.0. Third arm (GLiClass, pre-registered 2026-10-29): **half failed**, 0.278, below dense (−0.039, CI below 0). Fourth arm (GLiClass v4-edge, pre-registered 2026-10-29): **half failed**, 0.322, level with dense (+0.005, CI [−0.015, +0.025]), below zerank |
 | 05 | `pooling-vs-summary` | title-embed vs chunk-pooling; trained adapter | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | **Split:** pooling helps held against title-only: chunk-pool nDCG@10 +0.0255 (p=0.0002). It nulled against `dense` (title+text) on all three metrics over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), though recall@50 -0.0245 (p=0.0112) is a significant loss |
 | 06 | `learning-to-rank` | XGBoost / LambdaMART on MSLR-WEB10K | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | **Held:** test nDCG@10 0.327 (best feature, picked on vali) → 0.492 (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries. One fold, fixed settings |
 | 07 | `contextual-retrieval` | chunk text: plain vs title-prefixed vs LLM context line (Claude Haiku) | **The LLM context line beats plain chunks, but not the title.** Arm 3 vs arm 1 paired nDCG@10 CI above 0; arm 3 vs arm 2 CI includes 0. Pre-registered 2026-10-29, before any context line was written | **Failed, first half:** arm 3 (Haiku context) vs arm 1 (plain) nDCG@10 +0.0051, CI [−0.0011, +0.0117], p = 0.11. Second half held: vs arm 2 (title) +0.0025, CI includes 0. Every chunk arm ties title+text dense (0.3167): 0.3140 / 0.3166 / 0.3191. Chunk-level follow-up (pre-registered): **held**, context beats plain chunks when each chunk is ranked alone (+0.0238), and the title prefix matches it |
@@ -173,7 +172,7 @@ claims are testable and the notebooks stay readable.
 ## Status
 
 All seven notebooks have run. The library is tested. The notebooks are executed with
-outputs committed. Every open prediction resolved except the GLiClass v4 arm in notebook 04, whose run is in progress. 03 has RRF nulling against dense.
+outputs committed. Every open prediction resolved. 03 has RRF nulling against dense.
 04 has nDCG rising while recall@50 stays frozen, as it structurally must. 05 splits:
 pooling beats title-only but nulls against dense, and the adapter nulls. 06 has
 LambdaMART beating the best single feature. 07 has LLM-written context lines
@@ -214,6 +213,10 @@ dense order. Scores go to `results/rerank/gliclass_v4_scores.json`.
 (paired CI against zerank below 0).** Falsified if either CI includes 0 or lies on the other side.
 Reported, not bet on: v4 against v3, recall@10, and recall@50 bit-identical at 0.2508. Known
 confound: the checkpoint and the prompt both change from v3, so a win cannot be split between them.
+**Result: half failed.** v4 scored nDCG@10 0.3218, level with the dense pool (+0.0050,
+CI [−0.0147, +0.0251], p = 0.63), and below zerank (−0.0664, CI [−0.0835, −0.0498]). It beats v3
+(+0.0436, reported). recall@50 stayed frozen. 1,917 tied scores fall back to dense order. The sweep
+took 31,036 s on a shared laptop CPU. See the end of notebook 04.
 
 **A hosted explainer.** `SHOWCASE.md` is the frozen write-up; the sibling repo
 [rlvr-codegen](https://github.com/Michiel-DK/rlvr-codegen) hosts the same kind of page on GitHub
