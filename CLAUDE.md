@@ -1,7 +1,7 @@
 # rag-retrieval-lab
 
 Retrieval methods explained by running them on NFCorpus, predictions written down first. Read
-`SHOWCASE.md` for the write-up of notebooks 01 to 04 and `LESSONS.md` before changing any method.
+`SHOWCASE.md` for the write-up of notebooks 01 to 04 and `LESSONS.md` before changing any method. One dataset per lab repo: a new dataset or modality is a new repo that copies this skeleton (README "Scope of the repo"), never a folder here.
 
 ## Bearings
 
