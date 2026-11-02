@@ -193,6 +193,15 @@ Notebook 04's LLM-judge grades, zerank scores and GLiClass scores are committed 
 Scope: every NFCorpus verdict is a fact about one small corpus, one small embedder
 (MiniLM-L6) and an untuned BM25. Notebook 06 is one MSLR fold with fixed settings.
 
+### Scope of the repo (decided 2 Nov 2026)
+
+One dataset, one question. This repo stays NFCorpus retrieval; no second dataset or second modality
+lands in this tree. A new lab case gets its own repo that copies this skeleton (a small package with
+data loader and metrics, one `experiments/run_<method>.py` per method, committed `results/*.json`,
+predictions registered before a run, unit tests as the CI gate, lane args in `CLAUDE.md`). The first
+sibling is `telemetry-anomaly-lab` (ESA-ADB satellite telemetry, local only on 2 Nov 2026). Shared
+tooling is not extracted until a third lab shows what is actually shared.
+
 ### Later arms (pre-registered 2026-10-29, all resolved)
 
 **Notebook 04, third reranker arm: GLiClass. Pre-registered 2026-10-29 (`bdc024b`), run the same day.**
