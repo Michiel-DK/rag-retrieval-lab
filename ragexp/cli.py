@@ -14,6 +14,27 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_check(args: argparse.Namespace) -> int:
+    from . import check, methods, runs
+
+    if bool(args.names) == bool(args.all):
+        raise ValueError("give method names or --all, not both and not neither")
+    if args.all:
+        names = [n for n in sorted(methods.REGISTRY) if (runs._SCORES / f"{n}.json").is_file()]
+    else:
+        names = list(args.names)
+    for n in names:  # fail on usage errors before the (slow) corpus load
+        if n not in methods.REGISTRY:
+            raise ValueError(f"unknown method {n!r}; registered: {', '.join(sorted(methods.REGISTRY))}")
+        if not (runs._SCORES / f"{n}.json").is_file():
+            raise FileNotFoundError(f"no committed scores for {n!r} at {runs._SCORES / (n + '.json')}")
+    corpus = check.load_nfcorpus()
+    results = [check.check_method(n, corpus) for n in names]
+    for r in results:
+        print(check.format_result(r))
+    return 0 if all(r.ok for r in results) else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="ragexp", description="Retrieval experiments on NFCorpus, predictions first.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -25,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--resamples", type=int, default=10_000)
     d.add_argument("--seed", type=int, default=42)
     d.set_defaults(func=_cmd_diff)
+
+    c = sub.add_parser("check", help="recompute registered methods and compare with committed scores (read-only)")
+    c.add_argument("names", nargs="*", help="registered method names")
+    c.add_argument("--all", action="store_true", help="every registered method with a committed scores file")
+    c.set_defaults(func=_cmd_check)
     return p
 
 
