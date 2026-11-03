@@ -52,7 +52,8 @@ changes which of those 50 reach the top-10.
 Every notebook **states its prediction and the mechanism behind it before running the
 experiment**. Then it runs and reports what happened, including when the prediction was
 wrong. That is the whole method. A prediction written down afterwards is a story rather
-than a prediction.
+than a prediction. Since November 2026, `ragexp run` refuses to write a result until its
+prediction is committed (see "The `ragexp` command").
 
 This matters because the source system's results **do not automatically transfer**. It
 ran on 1,147 investor profiles with a specific lexical field; NFCorpus is bio-medical
@@ -151,6 +152,40 @@ cannot be regenerated against the same model, since the alias moves. The zerank 
 be re-run locally against the named checkpoint `zeroentropy/zerank-1-small` (not
 revision-pinned).
 
+## The `ragexp` command
+
+`pip install -e .` puts a `ragexp` command on your path (also `python -m ragexp`). It has
+three subcommands. Two of them read only the committed files.
+
+```bash
+ragexp diff dense rerank_llm        # paired bootstrap between two committed score files
+# ndcg@10  dense -> rerank_llm   n=323 paired queries
+#   delta (b - a)            +0.0885   95% CI [+0.0715, +0.1057]   p=0.0000
+ragexp check --all                  # recompute every registered method, compare with results/
+# OK  bm25  323 queries identical
+ragexp run rrf --name rrf_depth100 --param depth=100   # a new run: needs a committed prediction
+```
+
+`diff` needs no corpus. It bootstraps in corpus query order, kept in `results/query_order.json`,
+so its CIs match the published ones.
+
+`check` exits 1 if any per-query value moved: recall@k must match exactly, nDCG@k within 1e-12.
+A file written by `run` is rebuilt from its manifest, a notebook-era file from the registered
+method of the same name (`bm25`, `dense`, `rrf` so far).
+
+`run` enforces the rule above. Writing into `results/` needs `predictions/<name>.md`, with a
+`## Prediction` and a `## Mechanism` section, committed before the run (format in
+`predictions/README.md`). It refuses an existing scores file, since committed results are never
+regenerated. Each run also writes `results/manifests/<name>.json`: method, parameters, repo
+commit, prediction commit, package versions and the scores file's sha256.
+
+Want to try something without that ceremony? Point `RAGEXP_RESULTS` at a scratch folder. The run
+is then exploratory: no gate, and the output says it is not evidence.
+
+To add a method, give it a `name`, `params()` and `rank(corpus)` as a dataclass in
+`ragexp/methods.py` and register it in `REGISTRY`. Rerankers, chunking and LTR are not ported
+yet. Their inputs include LLM sweeps that are committed and not re-run.
+
 ## Layout
 
 ```
@@ -164,10 +199,16 @@ ragexp/          the library: importable, unit-testable, no notebook magic
   adapter.py     linear query adapter (InfoNCE), nb 05      [done]
   ltr.py         LETOR loading + LambdaMART helpers, nb 06  [done]
   contextualize.py  LLM context lines for chunks, nb 07     [done]
+  paths.py       where results/ and predictions/ resolve
+  methods.py     Method protocol + registry (bm25, dense, rrf)
+  compare.py / check.py / runner.py / predictions.py / manifest.py
+                 the `ragexp diff | check | run` command (cli.py)
 notebooks/       the teaching layer: narrative, plots, lessons (all seven run)
 experiments/     scripts that produce the committed numbers
+predictions/     written-first predictions that `ragexp run` requires
 results/         committed snapshots (so notebooks don't need to re-run everything)
-tests/           pytest suite (88 tests; `-m integration` needs local HF caches)
+                 scores/, rerank/, context/, manifests/, query_order.json
+tests/           pytest suite (155 tests; 144 unit, the CI gate; 11 integration need local HF caches)
 LESSONS.md       every experiment: what / number / verdict / lesson  [done]
 ```
 
