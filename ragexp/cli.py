@@ -20,7 +20,11 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if bool(args.names) == bool(args.all):
         raise ValueError("give method names or --all, not both and not neither")
     if args.all:
-        names = [n for n in sorted(methods.REGISTRY) if (runs._SCORES / f"{n}.json").is_file()]
+        # --all means every registered method; a missing committed file is an error, never a skip,
+        # so a green --all cannot be vacuous (review finding on #40).
+        names = sorted(methods.REGISTRY)
+        if not names:
+            raise ValueError("--all: no registered methods")
     else:
         names = list(args.names)
     for n in names:  # fail on usage errors before the (slow) corpus load
@@ -33,6 +37,14 @@ def _cmd_check(args: argparse.Namespace) -> int:
     for r in results:
         print(check.format_result(r))
     return 0 if all(r.ok for r in results) else 1
+
+
+def _cmd_run(args: argparse.Namespace) -> int:
+    from . import runner
+
+    method = runner.build(args.method, runner.parse_params(args.param), args.name)  # refuses before compute
+    print(runner.format_run(runner.run(method)))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,8 +61,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     c = sub.add_parser("check", help="recompute registered methods and compare with committed scores (read-only)")
     c.add_argument("names", nargs="*", help="registered method names")
-    c.add_argument("--all", action="store_true", help="every registered method with a committed scores file")
+    c.add_argument("--all", action="store_true", help="every registered method; exit 2 if any lacks a committed scores file")
     c.set_defaults(func=_cmd_check)
+
+    r = sub.add_parser("run", help="rank + score a registered method into a NEW results/scores/<name>.json")
+    r.add_argument("method", help="registered method name")
+    r.add_argument("--name", help="output name (default: the method's name); must not exist yet")
+    r.add_argument("--param", action="append", default=[], metavar="KEY=VALUE", help="method parameter, JSON-typed (repeatable)")
+    r.set_defaults(func=_cmd_run)
     return p
 
 
@@ -58,7 +76,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (FileNotFoundError, ValueError) as e:
+    except (FileNotFoundError, FileExistsError, ValueError) as e:
         print(f"ragexp {args.cmd}: {e}", file=sys.stderr)
         return 2
 
