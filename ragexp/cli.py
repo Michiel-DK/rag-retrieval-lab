@@ -42,8 +42,8 @@ def _cmd_check(args: argparse.Namespace) -> int:
 def _cmd_run(args: argparse.Namespace) -> int:
     from . import runner
 
-    method = runner.build(args.method, runner.parse_params(args.param), args.name)  # refuses before compute
-    print(runner.format_run(runner.run(method)))
+    method, prediction = runner.build(args.method, runner.parse_params(args.param), args.name)  # refuses before compute
+    print(runner.format_run(runner.run(method, prediction)))
     return 0
 
 
