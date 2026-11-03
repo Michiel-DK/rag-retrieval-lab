@@ -126,12 +126,12 @@ and it generalises well past retrieval.
 
 ```bash
 pyenv virtualenv 3.12.9 rag-retrieval-lab && pyenv local rag-retrieval-lab
-pip install -r requirements.txt
+pip install -r requirements.txt   # = pip install -e ".[gliclass,notebooks,dev]"; core only: pip install -e .
 python -c "from ragexp.data import load_nfcorpus; print(load_nfcorpus().summary())"
 # NFCorpus: 3633 docs, 323 queries, 12334 judgments (38.2/query), grade distribution {1: 11758, 2: 576}
 ```
 
-`requirements.txt` caps torch below 2.15. On macOS 14, torch 2.15.0 aborts when
+`pyproject.toml` caps torch below 2.15. On macOS 14, torch 2.15.0 aborts when
 a model encodes on the Apple GPU (MPS); 2.14.1 passes the full test suite there. Linux is not
 affected, so the cap can go once a later torch passes on macOS 14.
 
