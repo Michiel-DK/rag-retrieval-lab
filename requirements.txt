@@ -1,11 +1,2 @@
-datasets>=2.14
-numpy>=1.24
-sentence-transformers>=2.2
-torch<2.15  # 2.15.0 aborts on Apple-GPU (MPS) encode on macOS 14; 2.14.1 passes the gate
-rank-bm25>=0.2.2
-xgboost>=2.0
-gliclass>=0.1.21
-scikit-learn>=1.3
-jupyter>=1.0
-matplotlib>=3.8
-pytest>=8.0
+# Everything (package + all extras), editable. Dependency pins live in pyproject.toml.
+-e .[gliclass,notebooks,dev]
