@@ -101,8 +101,20 @@ def test_exit_1_when_one_value_differs(env, capsys):
     assert "FAIL toy  1 mismatches" in capsys.readouterr().out
 
 
-def test_all_checks_registered_with_committed_file(env):
+def test_all_checks_every_registered_method(env, monkeypatch):
+    monkeypatch.setattr(methods, "REGISTRY", {"toy": Bm25})
     assert main(["check", "--all"]) == 0
+
+
+def test_all_exits_2_when_a_registered_method_has_no_committed_file(env, capsys):
+    # #40 review: --all used to skip "nofile" and pass. A skip is not a check.
+    assert main(["check", "--all"]) == 2
+    assert "no committed scores" in capsys.readouterr().err
+
+
+def test_all_exits_2_on_empty_registry(env, monkeypatch):
+    monkeypatch.setattr(methods, "REGISTRY", {})
+    assert main(["check", "--all"]) == 2
 
 
 def test_exit_2_unknown_method(env, capsys):

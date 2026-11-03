@@ -1,6 +1,7 @@
 """``ragexp check``: recompute a registered method and compare with its committed scores.
 
-Read-only: nothing here writes to ``results/``. The recompute uses the same
+Never writes committed scores. A cold embedding cache does get filled
+(``results/emb/``, gitignored), as with any dense run. The recompute uses the same
 ``evaluate_run`` call the notebooks used; recall@k must match exactly, ndcg@k
 within a float tolerance (summation-order noise only).
 """
