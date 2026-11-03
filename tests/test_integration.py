@@ -105,3 +105,13 @@ def test_committed_query_order_is_corpus_order(corpus):
 
     path = Path(__file__).resolve().parent.parent / "results" / "query_order.json"
     assert json.loads(path.read_text()) == [q.query_id for q in corpus.queries]
+
+
+@pytest.mark.parametrize("name", ["bm25", "dense", "rrf"])
+def test_registered_method_reproduces_committed_scores_exactly(corpus, name):
+    # Packaging queue item 3: the registry call is the call that produced the committed file.
+    from ragexp.methods import get_method
+    from ragexp.runs import evaluate_run, load_scores
+
+    got = evaluate_run(corpus, get_method(name).rank(corpus), recall_ks=(10, 50), ndcg_ks=(10,))
+    assert got == load_scores(name)
