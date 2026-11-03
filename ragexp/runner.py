@@ -4,17 +4,22 @@ Committed score files are evidence and are never regenerated (CLAUDE.md). So
 ``run`` refuses before any compute when ``results/scores/<name>.json`` already
 exists, tracked or not. To try a variant, give it its own ``--name``. To
 recompute a committed run and compare, use ``ragexp check``.
+
+A run that writes into the checkout's ``results/`` is evidence and must have a
+committed prediction first (``ragexp.predictions``). A run redirected with
+``RAGEXP_RESULTS`` is exploratory: no gate, and it says so.
 """
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from . import runs
+from . import paths, runs
 from .data import Corpus, load_nfcorpus
 from .methods import Method, get_method
+from .predictions import PredictionRef, require_prediction
 from .runs import evaluate_run, save_scores, summarize
 
 RECALL_KS = (10, 50)
@@ -39,6 +44,12 @@ def target_path(name: str) -> Path:
     return runs._SCORES / f"{name}.json"
 
 
+def writes_evidence() -> bool:
+    """True when scores land in the checkout's committed results/ (the gated location)."""
+    ev = paths.EVIDENCE_RESULTS_DIR
+    return ev is not None and runs._SCORES.resolve() == (ev / "scores").resolve()
+
+
 @dataclass
 class RunResult:
     name: str
@@ -46,10 +57,11 @@ class RunResult:
     path: Path
     n_queries: int
     means: Dict[str, Optional[float]]
+    prediction: Optional[PredictionRef]  # None = exploratory run
 
 
-def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> Method:
-    """Resolve the method and the output name, and refuse an existing file. No compute here."""
+def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> Tuple[Method, Optional[PredictionRef]]:
+    """Resolve the method and output name; refuse an existing file or a missing prediction. No compute here."""
     try:
         method = get_method(method_name, **params)
     except KeyError as e:
@@ -64,21 +76,26 @@ def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> M
             f"{path} exists; committed results are never regenerated. "
             f"Use --name for a new run, or `ragexp check {method.name}` to verify this one."
         )
-    return method
+    prediction = require_prediction(method.name) if writes_evidence() else None
+    return method, prediction
 
 
-def run(method: Method, corpus: Optional[Corpus] = None) -> RunResult:
+def run(method: Method, prediction: Optional[PredictionRef], corpus: Optional[Corpus] = None) -> RunResult:
     if target_path(method.name).exists():  # re-check: build() may have run long before
         raise FileExistsError(f"{target_path(method.name)} appeared during the run; not overwriting")
     if corpus is None:
         corpus = load_nfcorpus()
     scores = evaluate_run(corpus, method.rank(corpus), recall_ks=RECALL_KS, ndcg_ks=NDCG_KS)
     path = save_scores(method.name, scores)
-    return RunResult(method.name, method, path, len(scores), summarize(scores))
+    return RunResult(method.name, method, path, len(scores), summarize(scores), prediction)
 
 
 def format_run(r: RunResult) -> str:
     lines: List[str] = [f"wrote {r.path}  ({r.n_queries} queries)"]
+    if r.prediction is None:
+        lines.append("  exploratory: results dir is not the checkout's results/, so no prediction gate; not evidence")
+    else:
+        lines.append(f"  prediction: {r.prediction.path.name} @ {r.prediction.commit[:12]}")
     for m, v in r.means.items():
         lines.append(f"  {m:>10}: {'n/a' if v is None else f'{v:.4f}'}")
     return "\n".join(lines)
