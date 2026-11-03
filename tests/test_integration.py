@@ -115,3 +115,9 @@ def test_registered_method_reproduces_committed_scores_exactly(corpus, name):
 
     got = evaluate_run(corpus, get_method(name).rank(corpus), recall_ks=(10, 50), ndcg_ks=(10,))
     assert got == load_scores(name)
+
+
+def test_check_all_registered_methods_pass():
+    from ragexp.cli import main
+
+    assert main(["check", "--all"]) == 0
