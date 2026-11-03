@@ -14,8 +14,9 @@ from typing import Dict, List, Optional, Sequence
 
 from .data import Corpus
 from .metrics import mean_ignoring_none, ndcg_at_k, recall_at_k
+from .paths import RESULTS_DIR
 
-_SCORES = Path(__file__).resolve().parent.parent / "results" / "scores"
+_SCORES = RESULTS_DIR / "scores"
 
 Scores = Dict[str, Dict[str, Optional[float]]]  # query_id -> metric -> value
 

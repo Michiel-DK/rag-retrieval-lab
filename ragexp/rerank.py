@@ -27,7 +27,9 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-_RERANK_DIR = Path(__file__).resolve().parent.parent / "results" / "rerank"
+from .paths import RESULTS_DIR
+
+_RERANK_DIR = RESULTS_DIR / "rerank"
 
 Pool = Dict[str, List[str]]  # query_id -> candidate doc_ids (ranked)
 

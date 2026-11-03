@@ -18,8 +18,10 @@ from typing import List, Sequence
 
 import numpy as np
 
+from .paths import RESULTS_DIR
+
 _DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-_CACHE = Path(__file__).resolve().parent.parent / "results" / "emb"
+_CACHE = RESULTS_DIR / "emb"
 
 
 class Embedder:
