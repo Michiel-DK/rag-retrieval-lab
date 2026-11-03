@@ -96,3 +96,12 @@ def test_committed_pool_reproduces_committed_rerank_scores(corpus):
                     assert g is not None and math.isclose(
                         g, w, rel_tol=1e-12, abs_tol=1e-12
                     ), (name, qid, metric, g, w)
+
+
+def test_committed_query_order_is_corpus_order(corpus):
+    # ragexp diff bootstraps in this order without loading the corpus.
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "results" / "query_order.json"
+    assert json.loads(path.read_text()) == [q.query_id for q in corpus.queries]
