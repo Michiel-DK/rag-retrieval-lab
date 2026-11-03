@@ -18,13 +18,13 @@ import subprocess
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 from .data import Doc
+from .paths import RESULTS_DIR
 from .retrieve import _chunks
 
-_CONTEXT_DIR = Path(__file__).resolve().parent.parent / "results" / "context"
+_CONTEXT_DIR = RESULTS_DIR / "context"
 
 _SYSTEM = "You write short retrieval context for document chunks. Reply with JSON only."
 
