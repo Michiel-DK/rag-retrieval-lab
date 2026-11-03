@@ -15,21 +15,23 @@ def _cmd_diff(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from . import check, methods, runs
+    from . import check, manifest, methods, runs
 
     if bool(args.names) == bool(args.all):
         raise ValueError("give method names or --all, not both and not neither")
+    mdir = manifest.manifest_dir()
+    manifested = {p.stem for p in mdir.glob("*.json")} if mdir.is_dir() else set()
     if args.all:
-        # --all means every registered method; a missing committed file is an error, never a skip,
-        # so a green --all cannot be vacuous (review finding on #40).
-        names = sorted(methods.REGISTRY)
+        # --all = every registered method + every `ragexp run` output with a manifest. A missing
+        # committed file is an error, never a skip, so a green --all cannot be vacuous (#40 review).
+        names = sorted(set(methods.REGISTRY) | manifested)
         if not names:
             raise ValueError("--all: no registered methods")
     else:
         names = list(args.names)
     for n in names:  # fail on usage errors before the (slow) corpus load
-        if n not in methods.REGISTRY:
-            raise ValueError(f"unknown method {n!r}; registered: {', '.join(sorted(methods.REGISTRY))}")
+        if n not in methods.REGISTRY and n not in manifested:
+            raise ValueError(f"unknown method {n!r} and no manifest; registered: {', '.join(sorted(methods.REGISTRY))}")
         if not (runs._SCORES / f"{n}.json").is_file():
             raise FileNotFoundError(f"no committed scores for {n!r} at {runs._SCORES / (n + '.json')}")
     corpus = check.load_nfcorpus()
@@ -43,7 +45,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     from . import runner
 
     method, prediction = runner.build(args.method, runner.parse_params(args.param), args.name)  # refuses before compute
-    print(runner.format_run(runner.run(method, prediction)))
+    print(runner.format_run(runner.run(method, prediction, args.method)))
     return 0
 
 

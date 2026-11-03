@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from . import paths, runs
+from . import manifest, paths, runs
 from .data import Corpus, load_nfcorpus
 from .methods import Method, get_method
 from .predictions import PredictionRef, require_prediction
@@ -58,6 +58,7 @@ class RunResult:
     n_queries: int
     means: Dict[str, Optional[float]]
     prediction: Optional[PredictionRef]  # None = exploratory run
+    manifest_path: Path
 
 
 def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> Tuple[Method, Optional[PredictionRef]]:
@@ -70,6 +71,9 @@ def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> T
         raise ValueError(f"bad --param for {method_name!r}: {e}") from None
     if name:
         method.name = name
+    manifest.init_params(method)  # ValueError now, not after an hour of compute
+    if manifest.manifest_path(method.name).exists():
+        raise FileExistsError(f"{manifest.manifest_path(method.name)} exists without its scores file; resolve by hand")
     path = target_path(method.name)
     if path.exists():
         raise FileExistsError(
@@ -80,18 +84,20 @@ def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> T
     return method, prediction
 
 
-def run(method: Method, prediction: Optional[PredictionRef], corpus: Optional[Corpus] = None) -> RunResult:
+def run(method: Method, prediction: Optional[PredictionRef], method_key: str, corpus: Optional[Corpus] = None) -> RunResult:
     if target_path(method.name).exists():  # re-check: build() may have run long before
         raise FileExistsError(f"{target_path(method.name)} appeared during the run; not overwriting")
     if corpus is None:
         corpus = load_nfcorpus()
     scores = evaluate_run(corpus, method.rank(corpus), recall_ks=RECALL_KS, ndcg_ks=NDCG_KS)
     path = save_scores(method.name, scores)
-    return RunResult(method.name, method, path, len(scores), summarize(scores), prediction)
+    means = summarize(scores)
+    mpath = manifest.write_manifest(manifest.build_manifest(method_key, method, path, prediction, len(scores), means))
+    return RunResult(method.name, method, path, len(scores), means, prediction, mpath)
 
 
 def format_run(r: RunResult) -> str:
-    lines: List[str] = [f"wrote {r.path}  ({r.n_queries} queries)"]
+    lines: List[str] = [f"wrote {r.path}  ({r.n_queries} queries)", f"  manifest: {r.manifest_path}"]
     if r.prediction is None:
         lines.append("  exploratory: results dir is not the checkout's results/, so no prediction gate; not evidence")
     else:

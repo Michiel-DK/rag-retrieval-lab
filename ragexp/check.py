@@ -1,5 +1,8 @@
 """``ragexp check``: recompute a registered method and compare with its committed scores.
 
+A file written by ``ragexp run`` is rebuilt from its manifest (method + params);
+a notebook-era file without one from the registry defaults of the same name.
+
 Never writes committed scores. A cold embedding cache does get filled
 (``results/emb/``, gitignored), as with any dense run. The recompute uses the same
 ``evaluate_run`` call the notebooks used; recall@k must match exactly, ndcg@k
@@ -12,6 +15,7 @@ from typing import List, Optional
 
 from . import runs
 from .data import Corpus, load_nfcorpus
+from .manifest import load_manifest
 from .methods import get_method
 from .runs import Scores, evaluate_run
 
@@ -62,8 +66,13 @@ def compare_scores(expected: Scores, got: Scores, ndcg_tol: float = NDCG_TOL) ->
 
 
 def check_method(name: str, corpus: Optional[Corpus] = None) -> CheckResult:
+    m = load_manifest(name)
     try:
-        method = get_method(name)
+        if m is not None:  # a `ragexp run` output: rebuild exactly what the manifest recorded
+            method = get_method(str(m["method"]), **dict(m["init_params"]))
+            method.name = name
+        else:  # notebook-era file: registry defaults are the call that produced it
+            method = get_method(name)
     except KeyError as e:
         raise ValueError(e.args[0]) from None
     expected = runs.load_scores(name)  # FileNotFoundError -> usage error in cli.main
