@@ -32,12 +32,39 @@ class PredictionRef:
     commit: str  # last commit touching the file
 
 
+_HEADING = re.compile(r"##[ \t]+(.+?)[ \t]*$")
+_FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)$")
+
+
 def sections(text: str) -> Dict[str, str]:
-    """``## Heading`` -> body text (stripped), for every level-2 heading."""
+    """``## Heading`` -> body text (stripped), for every level-2 heading outside a code fence.
+
+    A fence opens on a line starting (indent <= 3) with three or more backticks or
+    tildes and closes on a later line starting with the same character, at least as
+    long, and nothing else after it. An unclosed fence runs to the end of the text.
+    """
     out: Dict[str, str] = {}
-    parts = re.split(r"^##[ \t]+(.+?)[ \t]*$", text, flags=re.MULTILINE)
-    for i in range(1, len(parts) - 1, 2):
-        out[parts[i].strip()] = parts[i + 1].strip()
+    key = None
+    body: list = []
+    fence = None  # (char, length) while inside a fenced block
+    for line in text.splitlines():
+        m = _FENCE.match(line)
+        if fence:
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():
+                fence = None
+        elif m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+        else:
+            h = _HEADING.match(line)
+            if h:
+                if key is not None:
+                    out[key] = "\n".join(body).strip()
+                key, body = h.group(1).strip(), []
+                continue
+        if key is not None:
+            body.append(line)
+    if key is not None:
+        out[key] = "\n".join(body).strip()
     return out
 
 
@@ -46,6 +73,10 @@ def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def require_prediction(name: str, predictions_dir: Path = PREDICTIONS_DIR) -> PredictionRef:
+    if name.lower() == "readme":
+        raise PredictionMissing(
+            "predictions/README.md is the format doc, not a prediction: pick another run name (--name)"
+        )
     path = predictions_dir / f"{name}.md"
     hint = f"write {path} with '## Prediction' and '## Mechanism', commit it, then run"
     if not path.is_file():

@@ -1,6 +1,7 @@
 """Predict-first gate: ragexp run refuses to write evidence without a committed prediction."""
 import functools
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -123,3 +124,44 @@ def test_exploratory_run_outside_evidence_dir_is_not_gated(tmp_path, monkeypatch
 def test_real_checkout_is_the_gated_location():
     assert paths.EVIDENCE_RESULTS_DIR is not None
     assert runner.writes_evidence()  # default config in this repo: runs are evidence, so gated
+
+
+FENCED_ONLY = "# fake\n\n```markdown\n## Prediction\nsomething\n\n## Mechanism\nbecause\n```\n"
+
+
+def test_sections_ignores_headings_inside_fences():
+    assert sections(FENCED_ONLY) == {}
+    assert sections("## A\nx\n~~~\n## B\n~~~\ny\n") == {"A": "x\n~~~\n## B\n~~~\ny"}
+    assert sections("## A\n  ```\n## B\n  ```\n## C\nz") == {"A": "```\n## B\n  ```", "C": "z"}
+    # a longer closing fence closes; a different fence char does not
+    assert sections("## A\n```\n## B\n````\n## C\nz") == {"A": "```\n## B\n````", "C": "z"}
+    assert "B" not in sections("## A\n```\n~~~\n## B\n```\n")
+    # unclosed fence runs to the end of the text
+    assert sections("## A\nx\n```\n## B\ny") == {"A": "x\n```\n## B\ny"}
+
+
+def test_fenced_only_headings_refused_under_non_readme_name(repo):
+    commit_prediction(repo, "p", FENCED_ONLY)
+    with pytest.raises(PredictionMissing):
+        require_prediction("p", repo / "predictions")
+
+
+def test_prediction_with_fenced_block_in_mechanism_still_parses():
+    text = "## Prediction\nup.\n\n## Mechanism\nBecause:\n\n```\n## Something\nx = 1\n```\n\nDone.\n"
+    got = sections(text)
+    assert set(got) == {"Prediction", "Mechanism"}
+    assert "## Something\nx = 1" in got["Mechanism"] and got["Mechanism"].endswith("Done.")
+
+
+def test_current_predictions_readme_is_not_a_prediction(repo):
+    text = (Path(__file__).resolve().parent.parent / "predictions" / "README.md").read_text()
+    commit_prediction(repo, "README", text)
+    with pytest.raises(PredictionMissing):
+        require_prediction("README", repo / "predictions")
+
+
+@pytest.mark.parametrize("name", ["README", "readme", "ReadMe"])
+def test_readme_name_refused_even_if_well_formed(repo, name):
+    commit_prediction(repo, "README", GOOD)
+    with pytest.raises(PredictionMissing, match="format doc"):
+        require_prediction(name, repo / "predictions")

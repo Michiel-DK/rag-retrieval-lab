@@ -84,3 +84,32 @@ def test_run_against_real_results_dir_refuses_every_committed_method():
     for name in ("bm25", "dense", "rrf"):
         assert (runs._SCORES / f"{name}.json").is_file()
         assert main(["run", name]) == 2
+
+
+def _boom_corpus(monkeypatch):
+    def boom():
+        raise AssertionError("corpus loaded: refusal came after compute")
+
+    monkeypatch.setattr(runner, "load_nfcorpus", boom)
+
+
+@pytest.mark.parametrize(
+    "scores, manifest_file, must_have, must_not_have",
+    [
+        (True, True, "never regenerated", "without its scores file"),
+        (False, True, "without its scores file", None),
+        (True, False, "never regenerated", None),
+    ],
+)
+def test_build_refusal_message_matches_what_exists(env, monkeypatch, scores, manifest_file, must_have, must_not_have):
+    _boom_corpus(monkeypatch)
+    if scores:
+        (env / "bm25.json").write_text("{}")
+    if manifest_file:
+        (env.parent / "manifests").mkdir()
+        (env.parent / "manifests" / "bm25.json").write_text("{}")
+    with pytest.raises(FileExistsError) as e:
+        runner.build("bm25", {}, None)
+    assert must_have in str(e.value)
+    if must_not_have:
+        assert must_not_have not in str(e.value)
