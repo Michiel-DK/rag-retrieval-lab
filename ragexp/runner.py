@@ -72,14 +72,14 @@ def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> T
     if name:
         method.name = name
     manifest.init_params(method)  # ValueError now, not after an hour of compute
-    if manifest.manifest_path(method.name).exists():
-        raise FileExistsError(f"{manifest.manifest_path(method.name)} exists without its scores file; resolve by hand")
     path = target_path(method.name)
     if path.exists():
         raise FileExistsError(
             f"{path} exists; committed results are never regenerated. "
             f"Use --name for a new run, or `ragexp check {method.name}` to verify this one."
         )
+    if manifest.manifest_path(method.name).exists():
+        raise FileExistsError(f"{manifest.manifest_path(method.name)} exists without its scores file; resolve by hand")
     prediction = require_prediction(method.name) if writes_evidence() else None
     return method, prediction
 
