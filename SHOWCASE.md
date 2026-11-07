@@ -107,6 +107,10 @@ was that NFCorpus does not saturate by top-300.
 - BM25: +0.1160 over the same depth range, and lowest at every depth.
 - RRF: refused. It was predicted to pull ahead of dense past rank 50. It trails dense at @100
   and @200 (CIs exclude 0) and ties it at @300.
+- UIBK-Embedding-v1 (`predictions/pool-depth-uibk.md`): recall@300 is 0.4791, +0.1815 over its own
+  recall@50, CI [+0.1619, +0.2023]. Its lead over dense does not shrink with depth, which was
+  predicted and refused: +0.0468 at @50, +0.0549 at @300, CI [+0.0297, +0.0797], excluding 0 at
+  every depth. A deeper rerank pool should come from uibk, not dense.
 
 The rise is not an artefact of queries with more than 50 relevant docs. Dense gains +0.1745 on the
 262 queries with 50 or fewer and +0.1689 on the other 61 (post-hoc split,

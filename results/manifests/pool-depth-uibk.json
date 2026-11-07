@@ -1,0 +1,65 @@
+{
+ "created_utc": "2026-11-07T18:32:06+00:00",
+ "describe": {
+  "class": "Uibk",
+  "name": "pool-depth-uibk",
+  "params": {
+   "batch_size": 16,
+   "device": "cpu",
+   "model": "DataScience-UIBK/uibk-embedding-v1",
+   "revision": "b18df82e77306006a1dd0162199f6dfeacb5492e",
+   "scoring": "exhaustive MaxSim",
+   "threads": 2
+  }
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50,
+   100,
+   200,
+   300
+  ]
+ },
+ "exploratory": false,
+ "init_params": {
+  "batch_size": 16,
+  "model": "DataScience-UIBK/uibk-embedding-v1",
+  "revision": "b18df82e77306006a1dd0162199f6dfeacb5492e",
+  "threads": 2
+ },
+ "means": {
+  "ndcg@10": 0.38943139460068427,
+  "recall@10": 0.18591273073903739,
+  "recall@100": 0.35918841967979814,
+  "recall@200": 0.420888518219881,
+  "recall@300": 0.4790696325651591,
+  "recall@50": 0.297578357792973
+ },
+ "method": "uibk-first-stage",
+ "n_queries": 323,
+ "name": "pool-depth-uibk",
+ "prediction": {
+  "commit": "522b8e1cfbeb1c903ad3ae6981c3511a8b6eac2c",
+  "file": "pool-depth-uibk.md"
+ },
+ "repo": {
+  "commit": "522b8e1cfbeb1c903ad3ae6981c3511a8b6eac2c",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "pool-depth-uibk.json",
+ "scores_sha256": "aa6b1ab5be10a1e5e3d7bf04bf2071c3ebdef3e75cfd1bc64786d0995c8a743a",
+ "versions": {
+  "datasets": "5.1.0",
+  "numpy": "2.5.4",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.3.0",
+  "torch": "2.11.0"
+ }
+}
