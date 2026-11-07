@@ -1,0 +1,11 @@
+# uibk-first-stage
+
+Retrieval lane, written 2026-11-07 by the radar's parked review, before any run. Origin: radar verdict "2026-11-07 · Parked review", item UIBK-Embedding-v1, https://arxiv.org/abs/2610.27195. Question: does a 179M single-pass dense + late-interaction encoder, used as the first stage alone, beat the MiniLM dense baseline on NFCorpus by more than paired-bootstrap noise, and does it reach the committed reranked configurations without a reranker?
+
+## Prediction
+Metric: nDCG@10 (primary), recall@10, recall@50. Case set: NFCorpus test, the 323 queries in `results/query_order.json`, human qrels. Baseline: `results/scores/dense.json` (nDCG@10 0.3167, recall@50 0.2508); also diffed against `results/scores/rerank_zerank.json` (0.3881) and `results/scores/rerank_llm.json` (0.4052).
+Direction and size: nDCG@10 **0.38** (0.36 to 0.39). The authors' card reports 38.79 on NFCorpus, and exhaustive MaxSim over the whole corpus should not score below their PLAID index. Δ vs dense **+0.06**, with a CI that excludes 0. Vs zerank: within noise (the CI includes 0). Vs the LLM-judge rerank: about −0.02, unsure whether the CI excludes 0. recall@50: 0.30 to 0.34, above dense's 0.2508; unsure on the size.
+Kill clause: drop UIBK as a first stage if its Δ nDCG@10 vs dense has a 95% paired-bootstrap CI that includes 0. If nDCG@10 < 0.355 (more than 0.03 under the card's 38.79 on the same queries), post the discrepancy as the finding (harness or card, say which) and do not adopt it.
+
+## Mechanism
+MiniLM-L6 compresses a document into one 384-dim vector, so the exact biomedical terms NFCorpus queries hinge on (a nutrient, a condition) get averaged into what the text is about. Late interaction keeps one vector per token and MaxSim rewards each query token's best match, which is the lexical precision BM25 shows here without BM25's vocabulary failures. UIBK adds its dense vector into the same MaxSim, so the topical signal is kept. The authors distil a cross-encoder into the fused score, which is why a first-stage number can sit at the level of the lab's cross-encoder rerank. The authors' own numbers (card table) put it ahead of LateOn on NFCorpus (38.79 vs 37.79), so the gap to dense should be large and the gap to zerank small. The prediction tests the authors' claim on this lab's harness.
