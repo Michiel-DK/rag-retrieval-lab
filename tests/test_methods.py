@@ -67,3 +67,55 @@ def test_defaults_match_committed_runs():
 def test_unknown_method_lists_registry():
     with pytest.raises(KeyError, match="registered: bm25, dense, rrf"):
         get_method("colbert")
+
+
+# ── uibk-first-stage: interface + MaxSim on synthetic vectors (no pylate, no download) ──
+
+from ragexp.manifest import init_params
+from ragexp.methods import Uibk, maxsim_rank
+
+
+def test_maxsim_rank_sums_per_query_vector_max_and_breaks_ties_stably():
+    # doc a: rows 0-1, doc b: row 2, doc c: rows 3-4 (identical to a -> tie, a first by corpus order)
+    d = np.array([[1, 0], [0, 1], [0.5, 0.5], [1, 0], [0, 1]], dtype=np.float32)
+    offsets = np.array([0, 2, 3, 5])
+    q = np.array([[1, 0], [0, 1]], dtype=np.float32)  # a and c: 1+1=2; b: 0.5+0.5=1
+    assert maxsim_rank(q, d, offsets, ["a", "b", "c"]) == ["a", "c", "b"]
+    q2 = np.array([[0.5, 0.5]], dtype=np.float32)  # a, b, c all 0.5 -> corpus order
+    assert maxsim_rank(q2, d, offsets, ["a", "b", "c"]) == ["a", "b", "c"]
+
+
+class FakeColBERT:
+    """Letter-presence token vectors, one per word; the doc/query prompts are recorded."""
+
+    def __init__(self):
+        self.calls = []
+
+    def encode(self, texts, is_query, prompt_name, batch_size, **kw):
+        self.calls.append((is_query, prompt_name))
+        out = []
+        for t in texts:
+            rows = []
+            for w in t.lower().split():
+                v = np.zeros(26, dtype=np.float32)
+                for ch in w:
+                    if "a" <= ch <= "z":
+                        v[ord(ch) - 97] = 1
+                rows.append(v / max(np.linalg.norm(v), 1e-9))
+            out.append(np.stack(rows))
+        return out
+
+
+def test_uibk_method_interface(monkeypatch):
+    fake = FakeColBERT()
+    monkeypatch.setattr(Uibk, "_load", lambda self: fake)
+    m = get_method("uibk-first-stage")
+    assert isinstance(m, Method) and m.name == "uibk-first-stage"
+    r = m.rank(CORPUS)
+    assert set(r) == {"q1", "q2"} and all(sorted(v) == ["d1", "d2", "d3"] for v in r.values())
+    assert r["q1"][0] == "d1" and r["q2"][0] == "d2"
+    assert fake.calls == [(False, "document"), (True, "query")]
+    # the manifest records the HF revision, and check rebuilds the same method from it
+    p = init_params(m)
+    assert p["revision"] == "b18df82e77306006a1dd0162199f6dfeacb5492e" and p["model"] == "DataScience-UIBK/uibk-embedding-v1"
+    assert get_method("uibk-first-stage", **p).params() == m.params()

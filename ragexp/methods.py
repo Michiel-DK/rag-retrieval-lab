@@ -87,7 +87,74 @@ class Rrf:
         return {q.query_id: rrf([d[q.query_id], b[q.query_id]], k=self.k, depth=self.depth) for q in corpus.queries}
 
 
-REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf}
+def maxsim_rank(query_vecs: "np.ndarray", doc_vecs: "np.ndarray", offsets: "np.ndarray", doc_ids: List[str]) -> List[str]:
+    """Exhaustive late-interaction ranking over the whole corpus.
+
+    ``doc_vecs`` is every document's token vectors stacked into one (n_tokens, dim)
+    matrix; doc ``i`` owns rows ``offsets[i]:offsets[i+1]``. Score = sum over query
+    vectors of the max dot product with that doc's vectors (plain MaxSim, fp32).
+    Ties break on corpus order (stable sort), so the ranking is deterministic.
+    """
+    import numpy as np
+
+    sims = query_vecs.astype(np.float32) @ doc_vecs.astype(np.float32).T  # (n_q_vecs, n_tokens)
+    per_doc = np.maximum.reduceat(sims, offsets[:-1], axis=1)  # (n_q_vecs, n_docs)
+    scores = per_doc.sum(axis=0)
+    order = np.argsort(-scores, kind="stable")
+    return [doc_ids[i] for i in order]
+
+
+@dataclass
+class Uibk:
+    """UIBK-Embedding-v1 (arXiv 2610.27195) as the first stage alone, loaded through PyLate.
+
+    Title + body for every doc, ``prompt_name`` "document"/"query" as the card requires,
+    then exhaustive MaxSim over the whole corpus (no PLAID index). The model's 3 dense
+    slot vectors sit in the same list, so plain MaxSim is the card's fused score.
+    ``revision`` pins the HF commit whose remote code (trust_remote_code) was read before
+    the run. CPU only; ``threads`` and ``batch_size`` are fields because they fix the numerics.
+    Needs the ``uibk`` extra (pylate), in its own venv: pylate pins older torch/transformers.
+    """
+
+    model: str = "DataScience-UIBK/uibk-embedding-v1"
+    revision: str = "b18df82e77306006a1dd0162199f6dfeacb5492e"
+    batch_size: int = 16
+    threads: int = 2
+    name: str = "uibk-first-stage"
+
+    def params(self) -> Dict[str, object]:
+        return {"model": self.model, "revision": self.revision, "batch_size": self.batch_size,
+                "threads": self.threads, "device": "cpu", "scoring": "exhaustive MaxSim"}
+
+    def _load(self):
+        import torch
+
+        try:
+            from pylate import models
+        except ImportError:
+            raise ValueError("uibk-first-stage needs pylate: pip install -e '.[uibk]' in its own venv (see pyproject)") from None
+
+        torch.set_num_threads(self.threads)
+        return models.ColBERT(self.model, revision=self.revision, trust_remote_code=True, device="cpu")
+
+    def rank(self, corpus: Corpus) -> Rankings:
+        import numpy as np
+
+        model = self._load()
+        docs = model.encode([d.full for d in corpus.docs], is_query=False, prompt_name="document",
+                            batch_size=self.batch_size, show_progress_bar=True)
+        lengths = np.array([len(e) for e in docs])
+        offsets = np.concatenate([[0], np.cumsum(lengths)])
+        doc_vecs = np.concatenate([np.asarray(e, dtype=np.float32) for e in docs])
+        del docs
+        queries = model.encode([q.text for q in corpus.queries], is_query=True, prompt_name="query",
+                               batch_size=self.batch_size)
+        ids = corpus.doc_ids
+        return {q.query_id: maxsim_rank(np.asarray(qv, dtype=np.float32), doc_vecs, offsets, ids)
+                for q, qv in zip(corpus.queries, queries)}
+
+
+REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk}
 
 
 def get_method(name: str, **params) -> Method:
@@ -101,4 +168,4 @@ def describe(method: Method) -> Dict[str, object]:
     return {"name": method.name, "class": type(method).__name__, "params": method.params()}
 
 
-__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "REGISTRY", "get_method", "describe"]
+__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "maxsim_rank", "REGISTRY", "get_method", "describe"]
