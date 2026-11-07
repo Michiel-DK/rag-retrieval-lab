@@ -1,0 +1,57 @@
+{
+ "created_utc": "2026-11-07T17:42:47+00:00",
+ "describe": {
+  "class": "Dense",
+  "name": "pool-depth-dense",
+  "params": {
+   "model": "sentence-transformers/all-MiniLM-L6-v2"
+  }
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50,
+   100,
+   200,
+   300
+  ]
+ },
+ "exploratory": false,
+ "init_params": {
+  "model": "sentence-transformers/all-MiniLM-L6-v2"
+ },
+ "means": {
+  "ndcg@10": 0.3167223032093099,
+  "recall@10": 0.15498797328057845,
+  "recall@100": 0.31150992401169303,
+  "recall@200": 0.3833248974537247,
+  "recall@300": 0.4241917917703916,
+  "recall@50": 0.2507648951760531
+ },
+ "method": "dense",
+ "n_queries": 323,
+ "name": "pool-depth-dense",
+ "prediction": {
+  "commit": "23247e8084a3b78fd965d29daff1331c46072783",
+  "file": "pool-depth-dense.md"
+ },
+ "repo": {
+  "commit": "01e346814c70198b3edab2a2a666a969b41d7839",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "pool-depth-dense.json",
+ "scores_sha256": "d25e9450a272cdca67da577ae1c66c2366f276e1321fab6b998a06e318d19fb6",
+ "versions": {
+  "datasets": "5.0.0",
+  "numpy": "2.5.1",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.6.0",
+  "torch": "2.13.0"
+ }
+}

@@ -9,7 +9,7 @@ from typing import List, Optional
 def _cmd_diff(args: argparse.Namespace) -> int:
     from .compare import diff, format_diff
 
-    d = diff(args.a, args.b, metric=args.metric, n_resamples=args.resamples, seed=args.seed)
+    d = diff(args.a, args.b, metric=args.metric, metric_b=args.metric_b, n_resamples=args.resamples, seed=args.seed)
     print(format_diff(d))
     return 0
 
@@ -44,8 +44,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
 def _cmd_run(args: argparse.Namespace) -> int:
     from . import runner
 
+    ks = runner.normalize_recall_ks(args.recall_k)  # ValueError (exit 2) before any compute
     method, prediction = runner.build(args.method, runner.parse_params(args.param), args.name)  # refuses before compute
-    print(runner.format_run(runner.run(method, prediction, args.method)))
+    print(runner.format_run(runner.run(method, prediction, args.method, recall_ks=ks)))
     return 0
 
 
@@ -57,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("a", help="baseline run: name under results/scores/ or a path to a .json")
     d.add_argument("b", help="candidate run")
     d.add_argument("--metric", default="ndcg@10")
+    d.add_argument("--metric-b", default=None, help="metric read from run b (default: --metric); pairs metric of a with metric-b of b")
     d.add_argument("--resamples", type=int, default=10_000)
     d.add_argument("--seed", type=int, default=42)
     d.set_defaults(func=_cmd_diff)
@@ -70,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("method", help="registered method name")
     r.add_argument("--name", help="output name (default: the method's name); must not exist yet")
     r.add_argument("--param", action="append", default=[], metavar="KEY=VALUE", help="method parameter, JSON-typed (repeatable)")
+    r.add_argument("--recall-k", action="append", type=int, default=None, metavar="K", help="recall depth to score (repeatable; default 10 and 50)")
     r.set_defaults(func=_cmd_run)
     return p
 

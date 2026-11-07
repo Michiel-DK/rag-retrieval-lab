@@ -40,6 +40,16 @@ def parse_params(items: Sequence[str]) -> Dict[str, object]:
     return out
 
 
+def normalize_recall_ks(ks: Optional[Sequence[int]]) -> Tuple[int, ...]:
+    """``--recall-k`` values -> sorted, de-duplicated tuple; None/empty -> the default RECALL_KS."""
+    if not ks:
+        return RECALL_KS
+    bad = [k for k in ks if isinstance(k, bool) or not isinstance(k, int) or k <= 0]
+    if bad:
+        raise ValueError(f"--recall-k must be a positive integer, got {bad[0]!r}")
+    return tuple(sorted(set(ks)))
+
+
 def target_path(name: str) -> Path:
     return runs._SCORES / f"{name}.json"
 
@@ -84,15 +94,17 @@ def build(method_name: str, params: Dict[str, object], name: Optional[str]) -> T
     return method, prediction
 
 
-def run(method: Method, prediction: Optional[PredictionRef], method_key: str, corpus: Optional[Corpus] = None) -> RunResult:
+def run(method: Method, prediction: Optional[PredictionRef], method_key: str, corpus: Optional[Corpus] = None,
+        recall_ks: Sequence[int] = RECALL_KS) -> RunResult:
     if target_path(method.name).exists():  # re-check: build() may have run long before
         raise FileExistsError(f"{target_path(method.name)} appeared during the run; not overwriting")
     if corpus is None:
         corpus = load_nfcorpus()
-    scores = evaluate_run(corpus, method.rank(corpus), recall_ks=RECALL_KS, ndcg_ks=NDCG_KS)
+    scores = evaluate_run(corpus, method.rank(corpus), recall_ks=recall_ks, ndcg_ks=NDCG_KS)
     path = save_scores(method.name, scores)
     means = summarize(scores)
-    mpath = manifest.write_manifest(manifest.build_manifest(method_key, method, path, prediction, len(scores), means))
+    mpath = manifest.write_manifest(manifest.build_manifest(method_key, method, path, prediction, len(scores), means,
+                                                                  recall_ks, NDCG_KS))
     return RunResult(method.name, method, path, len(scores), means, prediction, mpath)
 
 

@@ -9,7 +9,7 @@ Retrieval methods explained by running them on NFCorpus, predictions written dow
 python -m pytest -q tests --ignore=tests/test_integration.py   # the CI gate (unit only; integration downloads NFCorpus)
 ragexp diff <a> <b>        # paired bootstrap on committed scores, no corpus needed
 ragexp check --all         # recompute registered + manifested runs vs results/ (exit 1 on any drift)
-ragexp run <method> [--name N --param k=v]   # new run; needs committed predictions/<name>.md; never overwrites
+ragexp run <method> [--name N --param k=v --recall-k K]   # new run; needs committed predictions/<name>.md; never overwrites
 RAGEXP_RESULTS=<scratch> ragexp run ...      # exploratory: ungated, not evidence
 # internal dev harness (private): checked out locally at harness/, gitignored, not part of this tree
 ```

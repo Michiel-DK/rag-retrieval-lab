@@ -107,3 +107,55 @@ def test_run_refuses_orphan_manifest_and_non_dataclass_before_compute(env, monke
     assert main(["run", "rev"]) == 2
     assert main(["run", "nodc"]) == 2
     assert list((env / "scores").iterdir()) == []
+
+
+# --- --recall-k: the scoring call is recorded in the manifest and re-derived by check ----------
+
+def _edit_manifest(env, name, fn):
+    p = env / "manifests" / f"{name}.json"
+    m = json.loads(p.read_text())
+    fn(m)
+    p.write_text(json.dumps(m))
+
+
+def test_run_recall_k_scores_exactly_the_given_ks(env):
+    assert main(["run", "rev", "--name", "deep", "--recall-k", "300", "--recall-k", "10", "--recall-k", "300"]) == 0
+    rows = json.loads((env / "scores" / "deep.json").read_text())
+    assert rows and all(set(r) == {"recall@10", "recall@300", "ndcg@10"} for r in rows.values())
+
+
+def test_run_manifest_records_eval_ks_and_default_run_records_defaults(env):
+    main(["run", "rev", "--name", "deep", "--recall-k", "10", "--recall-k", "300"])
+    main(["run", "rev"])
+    m = load_manifest("deep")
+    assert m["eval"] == {"recall_ks": [10, 300], "ndcg_ks": [10]}
+    assert "recall_ks" not in m["init_params"]
+    assert load_manifest("rev")["eval"] == {"recall_ks": [10, 50], "ndcg_ks": [10]}
+    assert set(json.loads((env / "scores" / "rev.json").read_text())["q1"]) == {"recall@10", "recall@50", "ndcg@10"}
+
+
+def test_check_uses_manifest_ks_and_fails_when_they_are_edited(env, monkeypatch, capsys):
+    main(["run", "rev", "--name", "deep", "--recall-k", "10", "--recall-k", "300"])
+    monkeypatch.setattr(methods, "REGISTRY", {"rev": Rev})
+    assert main(["check", "deep"]) == 0
+    _edit_manifest(env, "deep", lambda m: m["eval"].update(recall_ks=[10, 50]))
+    assert main(["check", "deep"]) == 1  # scores file has recall@300, recompute with (10, 50) does not
+    assert "recall@300" in capsys.readouterr().out
+
+
+def test_check_manifest_without_eval_field_uses_10_50(env, monkeypatch):
+    main(["run", "rev", "--name", "old"])
+    _edit_manifest(env, "old", lambda m: m.pop("eval"))
+    monkeypatch.setattr(methods, "REGISTRY", {"rev": Rev})
+    assert main(["check", "old"]) == 0
+
+
+@pytest.mark.parametrize("bad", ["0", "-5"])
+def test_run_nonpositive_recall_k_exits_2_before_corpus_load(env, monkeypatch, bad, capsys):
+    def boom():
+        raise AssertionError("corpus loaded")
+
+    monkeypatch.setattr(runner, "load_nfcorpus", boom)
+    assert main(["run", "rev", "--name", "deep", "--recall-k", "10", "--recall-k", bad]) == 2
+    assert "--recall-k" in capsys.readouterr().err
+    assert list((env / "scores").iterdir()) == []

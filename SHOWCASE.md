@@ -44,7 +44,7 @@ model card says its development decisions were taken on BEIR, NFCorpus included,
 not a held-out number. Re-derive it with `ragexp check uibk-first-stage` in the `uibk` venv
 (pyproject extra), about 13 minutes on two CPU threads.
 
-## Four receipts
+## Five receipts
 
 ### 1. The ruler was calibrated before anything was measured
 
@@ -94,6 +94,27 @@ conventional.
 
 - depth=1000 is indistinguishable from full rankings.
 - depth=100 measurably clips recall@50 (−0.007, p = 0.03).
+
+### 5. The 50-doc rerank pool is not where first-stage recall stops
+
+Every reranker in notebook 04 sorts the top 50 dense docs. Recall@50 is 0.2508: the average query
+gets a quarter of its judged-relevant docs into that pool. The prediction, committed before the
+run (`predictions/pool-depth-*.md`, origin [arXiv 2610.24478](https://arxiv.org/abs/2610.24478)),
+was that NFCorpus does not saturate by top-300.
+
+- Dense: recall@300 is 0.4242. That is +0.1734 over recall@50, 95% CI [+0.1553, +0.1929],
+  n = 323 paired queries. The kill line was a CI upper bound below 0.05, so it did not fire.
+- BM25: +0.1160 over the same depth range, and lowest at every depth.
+- RRF: refused. It was predicted to pull ahead of dense past rank 50. It trails dense at @100
+  and @200 (CIs exclude 0) and ties it at @300.
+
+The rise is not an artefact of queries with more than 50 relevant docs. Dense gains +0.1745 on the
+262 queries with 50 or fewer and +0.1689 on the other 61 (post-hoc split,
+`python experiments/pool_depth_qrels.py`).
+
+What this does not show: that nDCG@10 rises with a deeper pool. Recall bounds what a reranker can
+see, not where it ranks it. A 300-doc rerank is the run this opens. It has not been run.
+
 
 ## What is honestly open
 
