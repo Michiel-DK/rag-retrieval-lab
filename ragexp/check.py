@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from . import runs
 from .data import Corpus, load_nfcorpus
-from .manifest import load_manifest
+from .manifest import eval_ks, load_manifest
 from .methods import get_method
 from .runs import Scores, evaluate_run
 
@@ -78,7 +78,8 @@ def check_method(name: str, corpus: Optional[Corpus] = None) -> CheckResult:
     expected = runs.load_scores(name)  # FileNotFoundError -> usage error in cli.main
     if corpus is None:
         corpus = load_nfcorpus()
-    got = evaluate_run(corpus, method.rank(corpus), recall_ks=(10, 50), ndcg_ks=(10,))
+    recall_ks, ndcg_ks = eval_ks(m)  # manifest "eval" when present, else (10, 50)/(10,)
+    got = evaluate_run(corpus, method.rank(corpus), recall_ks=recall_ks, ndcg_ks=ndcg_ks)
     return CheckResult(name, len(expected), compare_scores(expected, got))
 
 

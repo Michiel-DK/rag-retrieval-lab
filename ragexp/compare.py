@@ -32,6 +32,7 @@ class Diff:
     ci: Tuple[float, float]
     p: float
     order: str  # "corpus" or "sorted"
+    metric_b: Optional[str] = None  # metric read from run b; None = same as ``metric``
 
 
 def load_run(name_or_path: str) -> Tuple[str, Scores]:
@@ -59,6 +60,7 @@ def diff(
     n_resamples: int = 10_000,
     seed: int = 42,
     order_file: Path = QUERY_ORDER,
+    metric_b: Optional[str] = None,
 ) -> Diff:
     name_a, sa = load_run(a)
     name_b, sb = load_run(b)
@@ -66,19 +68,28 @@ def diff(
     if not shared:
         raise ValueError(f"{name_a} and {name_b} share no queries")
     qids, order = _order(shared, order_file)
-    va, vb = metric_vector(sa, metric, qids), metric_vector(sb, metric, qids)
-    if all(v is None for v in va) or all(v is None for v in vb):
-        raise ValueError(f"metric {metric!r} missing from {name_a} or {name_b}")
+    mb = metric_b or metric
+    va, vb = metric_vector(sa, metric, qids), metric_vector(sb, mb, qids)
+    if mb == metric:
+        if all(v is None for v in va) or all(v is None for v in vb):
+            raise ValueError(f"metric {metric!r} missing from {name_a} or {name_b}")
+    else:
+        if all(v is None for v in va):
+            raise ValueError(f"metric {metric!r} missing from {name_a}")
+        if all(v is None for v in vb):
+            raise ValueError(f"metric-b {mb!r} missing from {name_b}")
     delta, ci, p = paired_bootstrap(va, vb, n_resamples=n_resamples, seed=seed)
     n = sum(1 for x, y in zip(va, vb) if x is not None and y is not None)
     mean_a = summarize({q: sa[q] for q in qids}).get(metric)
-    mean_b = summarize({q: sb[q] for q in qids}).get(metric)
-    return Diff(name_a, name_b, metric, n, mean_a, mean_b, delta, ci, p, order)
+    mean_b = summarize({q: sb[q] for q in qids}).get(mb)
+    return Diff(name_a, name_b, metric, n, mean_a, mean_b, delta, ci, p, order, mb)
 
 
 def format_diff(d: Diff) -> str:
+    mb = d.metric_b or d.metric
+    head = d.metric if mb == d.metric else f"{d.metric} (a) vs {mb} (b)"
     lines = [
-        f"{d.metric}  {d.a} -> {d.b}   n={d.n} paired queries",
+        f"{head}  {d.a} -> {d.b}   n={d.n} paired queries",
         f"  {d.a:<24} {d.mean_a:.4f}",
         f"  {d.b:<24} {d.mean_b:.4f}",
         f"  delta (b - a)            {d.delta:+.4f}   95% CI [{d.ci[0]:+.4f}, {d.ci[1]:+.4f}]   p={d.p:.4f}",

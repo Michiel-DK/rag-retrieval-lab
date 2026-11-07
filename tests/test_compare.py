@@ -46,3 +46,48 @@ def test_cli_unknown_run_exits_2(capsys):
 
 def test_cli_missing_metric_exits_2(capsys):
     assert main(["diff", "dense", "rerank_llm", "--metric", "mrr@10"]) == 2
+
+
+# --- --metric-b: pair metric M of run a with metric M2 of run b ---------------------------------
+
+def _depth_run(tmp_path):
+    rows = {"q1": (0.2, 0.4), "q2": (0.5, 0.5), "q3": (0.1, 0.4), "q4": (0.3, 0.6)}
+    p = tmp_path / "depth.json"
+    p.write_text(json.dumps({q: {"recall@50": a, "recall@300": b} for q, (a, b) in rows.items()}))
+    return str(p), rows
+
+
+def test_diff_metric_b_within_one_run_is_mean_difference(tmp_path):
+    p, rows = _depth_run(tmp_path)
+    d = diff(p, p, metric="recall@50", metric_b="recall@300", order_file=tmp_path / "none.json")
+    expected = sum(b - a for a, b in rows.values()) / len(rows)
+    assert d.delta == pytest.approx(expected) and d.delta > 0
+    assert d.mean_a == pytest.approx(sum(a for a, _ in rows.values()) / 4)
+    assert d.mean_b == pytest.approx(sum(b for _, b in rows.values()) / 4)
+    assert d.metric == "recall@50" and d.metric_b == "recall@300"
+
+
+def test_diff_default_metric_b_is_metric(tmp_path):
+    p, _ = _depth_run(tmp_path)
+    same = diff(p, p, metric="recall@50", order_file=tmp_path / "none.json")
+    explicit = diff(p, p, metric="recall@50", metric_b="recall@50", order_file=tmp_path / "none.json")
+    assert same.delta == explicit.delta == 0 and same.mean_b == same.mean_a
+
+
+def test_cli_diff_metric_b_shows_both_names(tmp_path, capsys):
+    p, _ = _depth_run(tmp_path)
+    assert main(["diff", p, p, "--metric", "recall@50", "--metric-b", "recall@300"]) == 0
+    out = capsys.readouterr().out
+    assert "recall@50" in out and "recall@300" in out and "CI excludes 0" in out
+
+
+def test_cli_diff_without_metric_b_header_unchanged(tmp_path, capsys):
+    p, _ = _depth_run(tmp_path)
+    main(["diff", p, p, "--metric", "recall@50"])
+    assert "recall@300" not in capsys.readouterr().out
+
+
+def test_cli_missing_metric_b_exits_2(tmp_path, capsys):
+    p, _ = _depth_run(tmp_path)
+    assert main(["diff", p, p, "--metric", "recall@50", "--metric-b", "recall@999"]) == 2
+    assert "recall@999" in capsys.readouterr().err

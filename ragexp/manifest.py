@@ -18,13 +18,15 @@ import subprocess
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Sequence, Tuple
 
 from . import runs
 from .methods import Method, describe
 from .predictions import PredictionRef
 
 SCHEMA = 1
+DEFAULT_RECALL_KS = (10, 50)  # what every run scored before "eval" existed
+DEFAULT_NDCG_KS = (10,)
 PACKAGES = ("ragexp", "numpy", "rank-bm25", "sentence-transformers", "torch", "datasets")
 
 
@@ -70,12 +72,14 @@ def sha256(path: Path) -> str:
 
 
 def build_manifest(method_key: str, method: Method, scores_path: Path, prediction: Optional[PredictionRef],
-                   n_queries: int, means: Dict[str, Optional[float]]) -> Dict[str, object]:
+                   n_queries: int, means: Dict[str, Optional[float]],
+                   recall_ks: Sequence[int] = DEFAULT_RECALL_KS, ndcg_ks: Sequence[int] = DEFAULT_NDCG_KS) -> Dict[str, object]:
     return {
         "schema": SCHEMA,
         "name": method.name,
         "method": method_key,
         "init_params": init_params(method),
+        "eval": {"recall_ks": list(recall_ks), "ndcg_ks": list(ndcg_ks)},  # the scoring call, not constructor args
         "describe": describe(method),
         "scores_file": scores_path.name,
         "scores_sha256": sha256(scores_path),
@@ -96,6 +100,14 @@ def write_manifest(manifest: Dict[str, object]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")
     return path
+
+
+def eval_ks(m: Optional[Dict[str, object]]) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
+    """(recall_ks, ndcg_ks) a run was scored with; manifests without "eval" and notebook-era files get the defaults."""
+    e = (m or {}).get("eval")
+    if not e:
+        return DEFAULT_RECALL_KS, DEFAULT_NDCG_KS
+    return tuple(e["recall_ks"]), tuple(e["ndcg_ks"])
 
 
 def load_manifest(name: str) -> Optional[Dict[str, object]]:
