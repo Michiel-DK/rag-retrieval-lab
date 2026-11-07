@@ -1,0 +1,53 @@
+{
+ "created_utc": "2026-11-07T17:42:53+00:00",
+ "describe": {
+  "class": "Bm25",
+  "name": "pool-depth-bm25",
+  "params": {}
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50,
+   100,
+   200,
+   300
+  ]
+ },
+ "exploratory": false,
+ "init_params": {},
+ "means": {
+  "ndcg@10": 0.26781224409321935,
+  "recall@10": 0.12411720311195457,
+  "recall@100": 0.21865410920685965,
+  "recall@200": 0.2610206199820415,
+  "recall@300": 0.2952045042228773,
+  "recall@50": 0.17916273722636325
+ },
+ "method": "bm25",
+ "n_queries": 323,
+ "name": "pool-depth-bm25",
+ "prediction": {
+  "commit": "23247e8084a3b78fd965d29daff1331c46072783",
+  "file": "pool-depth-bm25.md"
+ },
+ "repo": {
+  "commit": "01e346814c70198b3edab2a2a666a969b41d7839",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "pool-depth-bm25.json",
+ "scores_sha256": "885891b77818082ce7dab816b1a3e1c7ccf83cbcc3d9c3a096abcaadafc4cd23",
+ "versions": {
+  "datasets": "5.0.0",
+  "numpy": "2.5.1",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.6.0",
+  "torch": "2.13.0"
+ }
+}
