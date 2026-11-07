@@ -89,8 +89,8 @@ conventional.
 
 ### 5. The 50-doc rerank pool is not where first-stage recall stops
 
-Every reranker in notebook 04 sorts the top 50 dense docs. Recall@50 is 0.2508, so about three
-quarters of the judged-relevant docs never reach a reranker. The prediction, committed before the
+Every reranker in notebook 04 sorts the top 50 dense docs. Recall@50 is 0.2508: the average query
+gets a quarter of its judged-relevant docs into that pool. The prediction, committed before the
 run (`predictions/pool-depth-*.md`, origin [arXiv 2610.24478](https://arxiv.org/abs/2610.24478)),
 was that NFCorpus does not saturate by top-300.
 
@@ -101,7 +101,8 @@ was that NFCorpus does not saturate by top-300.
   and @200 (CIs exclude 0) and ties it at @300.
 
 The rise is not an artefact of queries with more than 50 relevant docs. Dense gains +0.1745 on the
-262 queries with 50 or fewer and +0.1689 on the other 61 (post-hoc split).
+262 queries with 50 or fewer and +0.1689 on the other 61 (post-hoc split,
+`python experiments/pool_depth_qrels.py`).
 
 What this does not show: that nDCG@10 rises with a deeper pool. Recall bounds what a reranker can
 see, not where it ranks it. A 300-doc rerank is the run this opens. It has not been run.
