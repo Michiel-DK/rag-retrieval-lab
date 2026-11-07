@@ -1,0 +1,50 @@
+{
+ "created_utc": "2026-11-07T17:16:57+00:00",
+ "describe": {
+  "class": "Uibk",
+  "name": "uibk-first-stage",
+  "params": {
+   "batch_size": 16,
+   "device": "cpu",
+   "model": "DataScience-UIBK/uibk-embedding-v1",
+   "revision": "b18df82e77306006a1dd0162199f6dfeacb5492e",
+   "scoring": "exhaustive MaxSim",
+   "threads": 2
+  }
+ },
+ "exploratory": false,
+ "init_params": {
+  "batch_size": 16,
+  "model": "DataScience-UIBK/uibk-embedding-v1",
+  "revision": "b18df82e77306006a1dd0162199f6dfeacb5492e",
+  "threads": 2
+ },
+ "means": {
+  "ndcg@10": 0.38943139460068427,
+  "recall@10": 0.18591273073903739,
+  "recall@50": 0.297578357792973
+ },
+ "method": "uibk-first-stage",
+ "n_queries": 323,
+ "name": "uibk-first-stage",
+ "prediction": {
+  "commit": "d0860a35e3a6c9ccdc85a873faa8dc9c9e651cac",
+  "file": "uibk-first-stage.md"
+ },
+ "repo": {
+  "commit": "fae96bd85b473f9bfc8c4076205a7814cdd5bb09",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "uibk-first-stage.json",
+ "scores_sha256": "86f09df19e8c8ad660858ca2c231f629def39e6a9bd741572909135cb3e06e95",
+ "versions": {
+  "datasets": "5.1.0",
+  "numpy": "2.5.4",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.3.0",
+  "torch": "2.11.0"
+ }
+}

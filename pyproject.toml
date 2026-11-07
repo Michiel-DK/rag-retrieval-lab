@@ -26,6 +26,9 @@ ragexp = "ragexp.cli:main"
 gliclass = ["gliclass>=0.1.21"]        # notebook 04 GLiClass arm; tests/test_rerank.py imports it
 notebooks = ["jupyter>=1.0", "matplotlib>=3.8", "xgboost>=2.0"]  # xgboost: notebook 06 only
 dev = ["pytest>=8.0"]
+# uibk-first-stage method only. Own venv: pylate 1.6.0 pins sentence-transformers 5.3.0,
+# transformers<=5.3.0 and pulls torch 2.11, so it is kept out of requirements.txt and CI.
+uibk = ["pylate==1.6.0"]
 
 [tool.setuptools]
 packages = ["ragexp"]

@@ -21,6 +21,7 @@ train-vs-eval row. Each needs the encoder or the training run.
 | 05 | `pooling-vs-summary` | **Pooling helps** (the body carries signal the title doesn't). **Adapter nulls**: same encoder, nothing to align | ✅ **Split**: pooling helps held against title-only (nDCG@10 +0.0255, p=0.0002) and failed against `dense` (title+text): recall@10 -0.0013, recall@50 -0.0053, nDCG@10 -0.0028, all three null over 323 queries. Adapter nulls held on the 107 held-out queries: nDCG@10 -0.0063 (p=0.28), recall@10 -0.0031 (p=0.39), with recall@50 -0.0245 (p=0.0112) a significant loss |
 | 06 | `learning-to-rank` | **LambdaMART beats the best single feature** on Fold 1 test nDCG@10 (paired-bootstrap CI excludes 0). Refined on 2026-10-29, before running, from the first wording "LambdaMART wins", which named no baseline. A published null exists ([Elsevier](https://github.com/elsevierlabs-os/build-ltr-models-using-llm)) but it used LLM-generated labels; MSLR has no text to relabel, so that question stays a caveat | ✅ **Held**: test nDCG@10 0.327 (best feature, picked on vali) → **0.492** (LambdaMART), +0.165, CI [+0.155, +0.175], p ≈ 0, 1,928 defined test queries |
 | 07 | `contextual-retrieval` | **The LLM context line beats plain chunks, but not the title**: arm 3 vs arm 1 CI above 0, arm 3 vs arm 2 CI includes 0 | ❌ **First half failed, second held**: arm 3 vs arm 1 nDCG@10 +0.0051, CI [−0.0011, +0.0117]; vs arm 2 +0.0025, CI includes 0. All three chunk arms tie title+text dense |
+| run | `uibk-first-stage` (`ragexp run`, 2026-11-07; origin: {kind: paper, url: https://arxiv.org/abs/2610.27195, label: UIBK-Embedding-v1}) | **UIBK-Embedding-v1 as the first stage alone beats dense beyond noise and ties zerank**: nDCG@10 0.38 (0.36 to 0.39), Δ vs dense +0.06 with CI excluding 0, vs zerank CI includes 0, vs LLM judge about −0.02 (unsure), recall@50 0.30 to 0.34. Kill: CI vs dense includes 0, or nDCG@10 < 0.355 (`predictions/uibk-first-stage.md`, committed d0860a3 before the run) | ✅ **Held, one size range missed**: nDCG@10 **0.3894** (card: 0.3879); vs dense +0.0727, CI [+0.0541, +0.0921], p ≈ 0; vs zerank +0.0013, CI [−0.0169, +0.0197]; vs LLM judge −0.0158, CI [−0.0357, +0.0036], no difference shown. recall@50 **0.2976**, +0.0468 vs dense, CI [+0.0291, +0.0646]: above dense as predicted, 0.0024 under the predicted 0.30 floor. Kill clause did not fire. Post: one 179M encoder with exhaustive MaxSim, no reranker, reaches the cross-encoder rerank's nDCG@10 and lifts recall@50, which a reranker over the dense pool cannot move. The card says development decisions were taken on BEIR, NFCorpus included, so this is not a held-out number. Reopen if a re-run under `ragexp check` drifts, or if a held-out set puts it below dense |
 
 ## The ledger
 
@@ -54,8 +55,9 @@ train-vs-eval row. Each needs the encoder or the training run.
 
 ## The one-line version
 
-Reranking was the only intervention that beat the dense baseline. The gain is real
-against human labels and worthless against the judge's own. The metric that could not
+Across notebooks 01 to 07, reranking was the only intervention that beat the dense baseline. The
+gain is real against human labels and worthless against the judge's own. The `uibk-first-stage`
+run (2026-11-07) is the first first stage to beat dense: it ties the zerank rerank without one. The metric that could not
 move did not move, to the last bit.
 
 That last fact is the repo's spine. Pick the anchored metric before optimizing, and
