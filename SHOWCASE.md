@@ -33,8 +33,16 @@ From `LESSONS.md`, all deltas vs the dense baseline (MiniLM-L6), paired bootstra
 | dense baseline (nb 02) | 0.3167 | the bar: per-query scores committed so later systems can be *paired* against it |
 | BM25 (nb 03) | 0.2678 (−0.049, p ≈ 0) | **loses everywhere**: "lexical is strong on domain terminology" did not survive contact |
 | RRF fusion (nb 03) | 0.3093 (every CI straddles zero) | **null**: fusion only beat its *weaker* parent, the trivial direction |
-| LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.071 – +0.106) | the only intervention that beat the baseline |
+| LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.071 – +0.106) | the only nb 01–04 intervention that beat the baseline |
 | zerank-1-small, 1.7B (nb 04) | 0.3881 (+0.0714) | ~80% of the LLM's lift with no per-query API cost (runs locally on a laptop; tens of seconds per query) |
+| UIBK-Embedding-v1, first stage alone (`ragexp run uibk-first-stage`, 2026-11-07) | **0.3894** (+0.0727, CI +0.054 – +0.092) | **ties zerank** (+0.0013, CI −0.017 – +0.020) and the LLM judge (−0.0158, CI −0.036 – +0.004) with no reranker; recall@50 0.2508 → 0.2976 (+0.047, CI +0.029 – +0.065), the metric no reranker here could move |
+
+The UIBK row was added on 2026-11-07, after this write-up, from a committed prediction
+(`predictions/uibk-first-stage.md`). What it does not claim: the predicted recall@50 range
+(0.30 to 0.34) missed by 0.0024; the LLM-judge gap is not shown to be zero or nonzero; and the
+model card says its development decisions were taken on BEIR, NFCorpus included, so 0.3894 is
+not a held-out number. Re-derive it with `ragexp check uibk-first-stage` in the `uibk` venv
+(pyproject extra), about 13 minutes on two CPU threads.
 
 ## Four receipts
 
