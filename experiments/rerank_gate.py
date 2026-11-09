@@ -12,11 +12,12 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import Counter
 
 import numpy as np
 
 from ragexp.data import load_nfcorpus
-from ragexp.gate import FEATURES, auc
+from ragexp.gate import FEATURES, assign_folds, auc
 from ragexp.metrics import paired_bootstrap
 from ragexp.methods import GatedRerank
 from ragexp.paths import RESULTS_DIR
@@ -66,11 +67,13 @@ def main() -> int:
             gain_full = full.mean() - base.mean()
             kept = (gated.mean() - base.mean()) / gain_full
             print(f"\n  feature {f}: AUC(feature high -> Δ<0) {a:.3f}  (orientation-free {max(a, 1 - a):.3f})")
+            if f == "above_median":
+                counts = Counter(feats.tolist())
+                print("    value counts: " + ", ".join(f"{v:g} on {c}" for v, c in sorted(counts.items(), key=lambda x: -x[1])))
             for i, fit in enumerate(g["fits"]):
                 print(f"    fold {i}: skip when {f} {'>' if fit.direction == 'high' else '<'} {fit.threshold:.4f}  "
                       f"train skip {fit.train_skip_rate:.1%}")
             fold_rates = []
-            from ragexp.gate import assign_folds
             fold_of = assign_folds(qids, 5, 42)
             for i in range(5):
                 idx = [k for k, q in enumerate(qids) if fold_of[q] == i]
@@ -80,6 +83,9 @@ def main() -> int:
             print(f"    held-out skip rate {skip:.1%}; gated nDCG@10 {gated.mean():.4f} vs full {full.mean():.4f}: "
                   f"Δ {delta:+.4f}, 95% CI [{ci[0]:+.4f}, {ci[1]:+.4f}], p={p:.4f}; keeps {kept:.1%} of the rerank gain; "
                   f"recovers {max(gated.mean() - full.mean(), 0) / ceiling:.1%} of the oracle ceiling")
+            random_cost = skip * gain_full  # expected loss of skipping the same share of queries at random
+            print(f"    random skip at the same rate {skip:.1%} would cost {random_cost:.4f}; "
+                  f"this gate costs {full.mean() - gated.mean():.4f} ({random_cost - (full.mean() - gated.mean()):+.4f} better than random)")
             print(f"    kill test (skip ≥ 30% and CI lower bound ≥ −0.01): "
                   f"{'PASS' if skip >= 0.3 and ci[0] >= -0.01 else 'fail'}")
     return 0
