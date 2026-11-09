@@ -154,7 +154,78 @@ class Uibk:
                 for q, qv in zip(corpus.queries, queries)}
 
 
-REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk}
+@dataclass
+class GatedRerank:
+    """Lane rerank-gate-oracle: dense pool order where a one-feature gate skips, the judge's order where it calls.
+
+    Reads committed inputs only: ``results/rerank/dense_pool.json`` (pool and tie-break
+    order) and the judge's sweep (``llm_grades.json`` / ``zerank_scores.json``). Pool
+    features come from the dense cosine scores (embedding cache). The gate's direction
+    and threshold are fitted per fold on the other folds (``ragexp.gate``), against the
+    per-query nDCG@10 of the two orders scored on the corpus qrels, so every emitted
+    ranking is held out. Output is the 50-doc pool in either order: recall@50 = dense's.
+    """
+
+    judge: str = "llm"
+    feature: str = "top1"
+    folds: int = 5
+    seed: int = 42
+    min_skip: float = 0.3
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    name: str = "gated-rerank"
+
+    def __post_init__(self):
+        from .gate import FEATURES, JUDGES
+
+        if self.judge not in JUDGES:
+            raise ValueError(f"judge must be one of {sorted(JUDGES)}, got {self.judge!r}")
+        if self.feature not in FEATURES:
+            raise ValueError(f"feature must be one of {list(FEATURES)}, got {self.feature!r}")
+
+    def params(self) -> Dict[str, object]:
+        return {"judge": self.judge, "feature": self.feature, "folds": self.folds, "seed": self.seed,
+                "min_skip": self.min_skip, "model": self.model, "pool": "dense_pool"}
+
+    def gate(self, corpus: Corpus) -> Dict[str, object]:
+        """Everything the gate decided, for ``rank`` and for experiments/rerank_gate.py."""
+        from . import embed
+        from .gate import JUDGES, cross_validate, pool_features
+        from .rerank import load_pool, load_sweep, rerank_by_scores
+        from .runs import evaluate_run
+
+        pool = load_pool("dense_pool")
+        grades = load_sweep(JUDGES[self.judge])
+        qids = [q.query_id for q in corpus.queries]
+        missing = [q for q in qids if q not in pool or q not in grades]
+        if missing:
+            raise ValueError(f"{len(missing)} queries lack a committed pool or {JUDGES[self.judge]} entry, e.g. {missing[0]}")
+        emb = embed.Embedder(self.model)
+        doc_matrix = emb.encode([d.full for d in corpus.docs])
+        row = {d: i for i, d in enumerate(corpus.doc_ids)}
+        features: Dict[str, float] = {}
+        for q in corpus.queries:
+            qv = emb.encode([q.text])[0]
+            s = doc_matrix[[row[d] for d in pool[q.query_id]]] @ qv
+            features[q.query_id] = pool_features(s)[self.feature]
+        dense_order = {q: list(pool[q]) for q in qids}
+        judge_order = {q: rerank_by_scores(pool[q], grades[q]) for q in qids}
+        nd = evaluate_run(corpus, dense_order, recall_ks=(), ndcg_ks=(10,))
+        nj = evaluate_run(corpus, judge_order, recall_ks=(), ndcg_ks=(10,))
+        gains = {q: float(nj[q]["ndcg@10"] or 0.0) - float(nd[q]["ndcg@10"] or 0.0) for q in qids}
+        call, fits = cross_validate(features, gains, qids, self.folds, self.seed, self.min_skip)
+        return {"features": features, "gains": gains, "call": call, "fits": fits,
+                "dense_order": dense_order, "judge_order": judge_order}
+
+    def rank(self, corpus: Corpus) -> Rankings:
+        g = self.gate(corpus)
+        return {q: (g["judge_order"][q] if g["call"][q] else g["dense_order"][q]) for q in g["call"]}
+
+
+REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk,
+                                              "gated-rerank": GatedRerank}
+# Registered methods with no committed run under the registry key itself: every run of
+# them is a named `ragexp run` with a manifest. `check --all` checks those runs, not the key.
+RUN_ONLY = frozenset({"gated-rerank"})
 
 
 def get_method(name: str, **params) -> Method:
@@ -168,4 +239,4 @@ def describe(method: Method) -> Dict[str, object]:
     return {"name": method.name, "class": type(method).__name__, "params": method.params()}
 
 
-__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "maxsim_rank", "REGISTRY", "get_method", "describe"]
+__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]

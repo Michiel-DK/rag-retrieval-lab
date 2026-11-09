@@ -112,6 +112,23 @@ def test_all_exits_2_when_a_registered_method_has_no_committed_file(env, capsys)
     assert "no committed scores" in capsys.readouterr().err
 
 
+def test_all_skips_a_run_only_registry_key_but_checks_its_manifested_runs(env, monkeypatch, capsys):
+    from ragexp import manifest
+
+    monkeypatch.setattr(methods, "REGISTRY", {"toy": Bm25, "runonly": Bm25})
+    monkeypatch.setattr(methods, "RUN_ONLY", frozenset({"runonly"}))
+    assert main(["check", "--all"]) == 0  # no runonly.json: the key itself is not a run
+    m = {"method": "runonly", "init_params": {}}
+    mdir = manifest.manifest_dir()
+    mdir.mkdir(parents=True, exist_ok=True)
+    (mdir / "runonly-a.json").write_text(json.dumps(m))
+    assert main(["check", "--all"]) == 2  # its named run has a manifest but no scores: an error, not a skip
+    (env / "runonly-a.json").write_text((env / "toy.json").read_text())
+    capsys.readouterr()
+    assert main(["check", "--all"]) == 0
+    assert "OK  runonly-a" in capsys.readouterr().out
+
+
 def test_all_exits_2_on_empty_registry(env, monkeypatch):
     monkeypatch.setattr(methods, "REGISTRY", {})
     assert main(["check", "--all"]) == 2
