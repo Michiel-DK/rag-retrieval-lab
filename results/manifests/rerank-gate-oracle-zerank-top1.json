@@ -1,0 +1,62 @@
+{
+ "created_utc": "2026-11-09T13:47:30+00:00",
+ "describe": {
+  "class": "GatedRerank",
+  "name": "rerank-gate-oracle-zerank-top1",
+  "params": {
+   "feature": "top1",
+   "folds": 5,
+   "judge": "zerank",
+   "min_skip": 0.3,
+   "model": "sentence-transformers/all-MiniLM-L6-v2",
+   "pool": "dense_pool",
+   "seed": 42
+  }
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50
+  ]
+ },
+ "exploratory": false,
+ "init_params": {
+  "feature": "top1",
+  "folds": 5,
+  "judge": "zerank",
+  "min_skip": 0.3,
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "seed": 42
+ },
+ "means": {
+  "ndcg@10": 0.3624259147663158,
+  "recall@10": 0.16833496559642833,
+  "recall@50": 0.2507648951760531
+ },
+ "method": "gated-rerank",
+ "n_queries": 323,
+ "name": "rerank-gate-oracle-zerank-top1",
+ "prediction": {
+  "commit": "49bf1d89a9d06dea1c74d5bf0be7c3361dab87f6",
+  "file": "rerank-gate-oracle-zerank-top1.md"
+ },
+ "repo": {
+  "commit": "8b9b59d07e636705fbfb4a218f5931c62b43b5a2",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "rerank-gate-oracle-zerank-top1.json",
+ "scores_sha256": "f1cdb0abf13bbebbb295e9dcb80084d1320eec2730e98315bf2a50e7cfc58964",
+ "versions": {
+  "datasets": "5.0.0",
+  "numpy": "2.5.1",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.6.0",
+  "torch": "2.13.0"
+ }
+}
