@@ -65,7 +65,7 @@ def test_defaults_match_committed_runs():
 
 
 def test_unknown_method_lists_registry():
-    with pytest.raises(KeyError, match="registered: bm25, dense, rrf"):
+    with pytest.raises(KeyError, match="registered: bm25, dense, gated-rerank, rrf"):
         get_method("colbert")
 
 
