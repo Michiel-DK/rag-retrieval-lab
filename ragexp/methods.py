@@ -223,6 +223,9 @@ class GatedRerank:
 
 REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk,
                                               "gated-rerank": GatedRerank}
+# Registered methods with no committed run under the registry key itself: every run of
+# them is a named `ragexp run` with a manifest. `check --all` checks those runs, not the key.
+RUN_ONLY = frozenset({"gated-rerank"})
 
 
 def get_method(name: str, **params) -> Method:
@@ -236,4 +239,4 @@ def describe(method: Method) -> Dict[str, object]:
     return {"name": method.name, "class": type(method).__name__, "params": method.params()}
 
 
-__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "maxsim_rank", "REGISTRY", "get_method", "describe"]
+__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]

@@ -24,7 +24,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if args.all:
         # --all = every registered method + every `ragexp run` output with a manifest. A missing
         # committed file is an error, never a skip, so a green --all cannot be vacuous (#40 review).
-        names = sorted(set(methods.REGISTRY) | manifested)
+        # RUN_ONLY methods have no default run under their registry key; their runs are
+        # covered through the manifest half, so the registry half skips only the key.
+        names = sorted((set(methods.REGISTRY) - methods.RUN_ONLY) | manifested)
         if not names:
             raise ValueError("--all: no registered methods")
     else:
