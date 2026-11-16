@@ -1,0 +1,133 @@
+# Literature, full-text read against our results (2026-11-16)
+
+Reader question C5 (rerank / pool-depth / skip-rule claims against published BEIR/NFCorpus results). Decider: operator,
+whether the rag cards' claims hold against the published results. It flips when a full read shows a published result
+already answers one of the lab's open questions, or that our setup or metric is not comparable to the one the field
+reports. Method: `laptop-scheduler/jobs/_lit-full-read.md`. No runs, no model calls; every "ours" number is read from
+`LESSONS.md`, `results/manifests/*.json` or the committed scores, every "theirs" from the PDF/HTML table cited.
+
+Rank rule: **[F]** body read (setup, n, metric text, the results table cited); **[A]** abstract only; **[S]** snippet or
+secondary. All ten rows below are [F]. "Read" means the setup, data, metric and results sections plus the tables cited,
+located with text search over the full extracted text; appendices were read only where cited. PDFs are not committed.
+
+## Verdict on the decider
+
+| claim on our pages | outcome of the read |
+|---|---|
+| **Rerank** (nb 04: reranking is the only intervention that beats dense; recall@50 frozen) | **Holds, with scope.** BEIR Table 2 and RankGPT Table 1 show the same direction on NFCorpus (cross-encoder / LLM rerank of a first-stage pool adds 2 to 8 nDCG@10 points). The invariant is arithmetic, not a field result. Magnitudes are not comparable (different first stage, pool size, judge). |
+| **Pool depth** (no saturation by top-300) | **Holds as measured; the card's origin label overstates the paper.** The source paper (2610.24478) shows diminishing returns where recall is already 86 to 95% with 1.9 positives per query, and disclaims anything past 300. NFCorpus has 38.2 relevant docs per query (BEIR Table 1) and recall@300 0.42, so the two results do not conflict. |
+| **Skip rule** (a one-feature pre-rerank gate is not a lever) | **Holds; one misattribution to fix.** The source paper (2609.22880) also finds its score-gap gate almost never meets its constraint (skips 0 to 2%) and its learned gate is "barely discriminative". It has **no 0.65 AUC line**; our prediction and LESSONS row cite one. |
+| **BM25 loses to dense; RRF is a null** (nb 03, pool-depth-rrf) | **Not comparable as stated; flips.** Bruch et al. (2210.11934) run the same `all-MiniLM-L6-v2` on the same 323 NFCorpus queries with RRF k=60 and find RRF significantly *above* dense. Ours trails dense at recall@100. The setup difference that matters is the BM25 (theirs: stemming, k1=0.9, b=0.4; ours: `rank_bm25` defaults, `.lower().split()`, no stemming). |
+| **UIBK ties zerank without a reranker** | **Number reproduces** (0.3894 vs the paper's 38.79 in Table 2). "Not held-out" stands. |
+| **GLiClass as reranker** | **No published retrieval number exists** in the GLiClass paper; our two runs are not "against the field". |
+
+No open lane is answered by a published [F] result (section "Open-question check").
+
+## Paper table
+
+| # | id, date | rank | setup (data, models, who controls what) | n | metric as written | headline numbers (table) | method details we would need to match | comparable to our run? |
+|---|---|---|---|---|---|---|---|---|
+| 1 | BEIR, Thakur et al., arXiv 2104.08663 (2021) | [F] | 18 datasets, zero-shot; first 512 word pieces per doc for neural models; BM25 = Anserini, k1=0.9, b=0.4, title and passage as separate fields; rerank = BM25 top-100 + cross-encoder | NFCorpus: 323 test queries, 3,633 docs, 38.2 relevant docs/query, 3-level labels (Table 1) | nDCG@10, "Python interface of the official TREC evaluation tool" (pytrec_eval); gain function **not stated**; Table 9 reports Recall@100 | NFCorpus nDCG@10 (Table 2): BM25 0.325, TAS-B 0.319, ColBERT 0.305, BM25+CE 0.350, DPR 0.189. Recall@100 (Table 9): BM25 0.250, TAS-B 0.280, BM25+CE 0.250 | Anserini BM25 defaults; title field separate; 512-piece cut | **Corpus and qrels yes. BM25 no** (ours 0.2678 nDCG@10 vs 0.325). Dense: MiniLM-L6 is not in the table; TAS-B is the nearest and sits 0.006 under BM25. nDCG gain function unverified (see Metric section) |
+| 2 | Bruch, Gai, Ingber, "An Analysis of Fusion Functions for Hybrid Retrieval", arXiv 2210.11934 v2 (2023) | [F] | PISA BM25 (space tokenizer + stemming, k1=0.9, b=0.4, top-1,000) + **all-MiniLM-L6-v2** (FAISS exact IP, top-1,000); fusion over the union of both lists; RRF η=60 vs convex combination (TM2C2, α=0.8) | NFCorpus: 3.6K docs, 323 queries (Table 1) | Recall and nDCG at cutoff **100** for NFCorpus and SciFact (1000 elsewhere); paired two-tailed t-test, p<0.01; relevance threshold and gain function **not stated** | NFCorpus (Table 2). Recall@100: Lex 0.255, Sem 0.320, TM2C2 0.338, RRF 0.327. nDCG@100: Lex 0.268, Sem 0.296, TM2C2 0.327, RRF 0.312, oracle-α 0.371. Lex and Sem both significantly below RRF (∗); RRF significantly below TM2C2 (‡) | stemming; k1, b; union-then-rescore fusion; η=60 | **Closest setup in the field to ours. Dense side comparable** (same model, same queries; recall@100 ours 0.3115 vs 0.320). **BM25 side not** (ours 0.2187 vs 0.255). RRF outcome opposite in sign (see comparison) |
+| 3 | RankGPT, Sun et al., arXiv 2304.09542 (2023) | [F] | Rerank BM25 top-100 (pyserini) with permutation-generation prompts, sliding window 20 / step 10; **GPT-4 reranks only the top-30 already reranked by gpt-3.5-turbo** on BEIR (Table 1 footnote) | NFCorpus n not stated in the text read | nDCG@10 on BEIR; gain function **not stated** | NFCorpus nDCG@10 (Table 1): BM25 30.75, monoBERT 36.88, monoT5-3B 38.97, Cohere Rerank-v2 36.36, gpt-3.5 35.62, gpt-4 38.47 | window/step, first-stage list, API model version | **No.** Their first stage is BM25 top-100, ours dense top-50; their GPT-4 sees a 30-doc list pre-sorted by gpt-3.5; our judge is the `opus` alias with no recorded version (`ragexp/rerank.py:77`). Direction (LLM rerank adds several points on NFCorpus) is shared |
+| 4 | zELO / zerank, Pipitone et al., arXiv 2509.12541 (2025) | [F] | Training method for `zerank-1` (Qwen3-4B) and `zerank-1-small` (Qwen3-1.7B) from LLM pairwise preferences, 112,000 queries x 100 docs, no human labels | Eval datasets **not named** in the body read; n not stated | NDCG@10 per task | Table 2 "Medical": default embedding 0.619, Cohere v3.5 0.750, zerank-1-small 0.773, zerank-1 0.796. Table 3 "Healthcare" (private customer data): zerank-1-small 0.885. No NFCorpus or BEIR row | rerank depth for Table 2 not stated; Figure 12 reranks BM25 top-100 | **No.** The report has no NFCorpus number, so our 0.3881 stands alone and cannot be set beside a vendor figure. We ran `zerank-1-small` as published; the +0.154 "Medical" gap is not our +0.0714 |
+| 5 | GLiClass, Stepanov et al., arXiv 2508.07662 (2025) | [F] | Sequence classification (GLiNER-style), zero/few-shot, text-label pairs; compared to cross-encoders on classification sets | classification benchmarks, not retrieval | F1 (Tables 3 to 5) | **No retrieval or reranking evaluation.** "Cross-encoders, commonly used as rerankers in RAG pipelines" appears only as motivation in the abstract | n/a | **No.** Our v3 and v4-edge rerank arms test a use the paper does not evaluate. The v4 "reranking prompt" comes from the model card (not read in this lane, [S]), not from this paper |
+| 6 | ConTEB, Conti et al., arXiv 2505.24782 v2 (2025) | [F] | 8 context-dependent datasets + NanoBEIR; ModernBERT-large embedder; "Anthropic Contextual" arm = LLM-written chunk context before embedding | ConTEB Table 1: per-dataset doc/query counts; NanoBEIR = 13 datasets summed: 650 queries, 56,723 docs, 1 chunk per doc ("No context is needed") | nDCG@10 | Table 2: ModernBERT-large 52.0 average, Anthropic Contextual **72.4**, BM25 41.5; NanoBEIR 63.2 for both | LLM and prompt for the context arm not stated in the text read | **Mechanism yes, numbers no.** Our nb 07 post-hoc cell quotes 52.0 → 72.4 and 63.2 correctly. NanoBEIR is unchunked and the Anthropic arm scores exactly the base 63.2, consistent with a no-op there; our arms split abstracts into about five chunks, so NanoBEIR is not an analogue of our case |
+| 7 | Anthropic, "Contextual Retrieval" (blog, 2024-09-19), https://www.anthropic.com/engineering/contextual-retrieval | [F] (HTML body read; not a peer-reviewed paper, no arXiv id) | Domains: codebases, fiction, ArXiv papers, science papers; Gemini Text 004 embeddings; Cohere reranker; rerank of the top 150 to a top-20 | datasets and n **not stated** | "1 minus recall@20" | Failure rate 5.7% → 3.7% (contextual embeddings) → 2.9% (+ contextual BM25) → 1.9% (+ rerank). $1.02 per million document tokens (2024 pricing). "Under 200,000 tokens, skip retrieval" | prompt given in the post; chunking not described in numbers | **No.** Different metric (1 − recall@20), domains, embedder; no NFCorpus. Not an anchor for our nDCG@10 |
+| 8 | UIBK-Embedding-v1, Abdallah, Ali, Jatowt, arXiv 2610.27195 (2026-10-19) | [F] | 179M encoder, dense head + token head in one MaxSim; MTEB code; docs to 2048 tokens, queries to 256 (64 used for token matching); trained on 1.56M supervised queries (MS MARCO, NQ, HotpotQA, FEVER, FiQA, SQuAD v2, TriviaQA, MIRACL ...) plus 412k aux pairs; BEIR-query rows removed | NFCorpus via MTEB; n not restated | nDCG@10 | Table 2 NFCorpus **38.79** (LateOn 37.79, DenseOn 39.03). Table 3 decontaminated BEIR NFCorpus **29.32** (LateOn published 26.97, our-run 27.17). Section 7: two seeds of one config differ by about 0.2 on the 15-dataset average | PyLate/PLAID, exact MaxSim; document length 2048 | **Yes.** Ours 0.3894 vs 0.3879 (card) vs 38.79 here. Our run does not set a document length (`ragexp/methods.py` `Uibk` params: model, revision, batch size, threads) and this lane did not read what PyLate defaults to: unchecked |
+| 9 | "Beyond Recall Saturation", Li et al., arXiv 2610.24478 v2 (2026-10-22) | [F] | Chinese legal retrieval; Qwen3-Embedding-0.6B / 4B first stage, generative reranker, top-300 pool; average **1.90 positive passages per query** | STARD test 309, CSAID 118 queries | Recall@K = fraction of known positives in the top K; NDCG at 30 from binary gains | Table II recall@100/200/250/300 (%): 0.6B STARD 83.31/88.31/90.17/91.89, CSAID 71.48/81.07/84.26/86.03; 4B STARD 91.47/94.07/94.81/95.34, CSAID 85.62/92.24/94.33/95.07. 250→300 adds 0.54 to 1.77 points. Text: "they do not establish that larger pools beyond 300 would provide no further benefit" | top-300 pool then rerank to top-30 | **No.** Regime differs (recall 86 to 95% vs our 0.25 to 0.42; 1.9 vs 38.2 positives per query; legal Chinese vs English medical). Marginal gain per 100 docs is similar (see comparison) |
+| 10 | "Per-Query Gating of LLM Rerankers", Bacellar, arXiv 2609.22880 v1 (2026-09-19) | [F] | Graph-RAG candidates (HippoRAG2 + PhaseGraph) reranked by Llama-3.3-70B on 2Wiki (n=491), MuSiQue (514), HotpotQA (521); 27 list features + PCA of a query embedding; nested 5-fold, fixed seed; v1 retracts an earlier "73% lossless" claim (gold-label fallback, wrong MuSiQue target) | 491 / 514 / 521 | LastHop@K (does the final-hop passage appear in top K); harmful and beneficial skips counted per query; non-inferiority at 1 pp | Table 4 (nine cells): skips 51% on average at −1.2 pp, harmful skips in 8 of 9 cells (190 vs 136 beneficial). Table 3: reranker +34.8 pp at 2Wiki K=1, +0.4 pp at HotpotQA K=10. Text: one-feature score-gap gate "skips 0 to 2%" under the constraint; random gate at matched skip rate loses 2 to 11 pp on high-lift cells; harm AUC **0.16 to 0.70**; no 0.65 threshold anywhere | nested folds, calibration, 1 pp budget | **No on numbers** (multi-hop QA, last-hop coverage, 70B reranker). **Yes on design**: our random-skip baseline and per-query harm count are the analogues of its random gate and harmful skips |
+
+## Metric definitions side by side
+
+| | nDCG definition as the source states it | ours (`ragexp/metrics.py`) |
+|---|---|---|
+| BEIR | nDCG@10 through pytrec_eval; gain function not stated; NFCorpus judged on 3 levels | gain 2^grade − 1, log2(rank+1), grades from qrels (`_dcg`) |
+| Bruch | nDCG@100 and Recall@100 on NFCorpus; gain and relevance threshold not stated | nDCG@10; recall@K = hits / all judged-relevant ids (`recall_at_k`), relevant = `grade >= min_grade` (`data.py`) |
+| RankGPT | nDCG@10; gain not stated | same as above |
+| UIBK | nDCG@10 through MTEB; gain not stated | same as above |
+| Pool-depth paper | binary gains, NDCG@30 after rerank; Recall@K = fraction of known positives in top K | recall definition matches ours; nDCG differs |
+
+**Consequence.** Whether our exponential gain gives the same nDCG@10 as BEIR's numbers on a 3-level corpus is **not
+verifiable from the papers**. The papers do not state it. It is checkable only by recomputing dense nDCG@10 from a ranking
+under both gains (`results/rerank/dense_pool.json` holds the top-50 ids; the qrels need the dataset download), a local run
+this lane was not allowed to make. Until then, absolute nDCG@10 is set beside BEIR/RankGPT/UIBK numbers only as "same tool
+family, gain unverified". The UIBK match (0.3894 vs 38.79) is itself weak evidence the two agree, since a different gain
+would be expected to move both a dense and a late-interaction ranking by a similar small amount.
+
+## Comparison, per finished run
+
+| our run | our number (n=323 unless noted) | closest [F] number and n | how the setups differ | we can claim / we cannot |
+|---|---|---|---|---|
+| dense baseline (MiniLM-L6, title+text) | nDCG@10 0.3167, recall@100 0.3115 | Bruch Table 2: same model, recall@100 0.320, nDCG@100 0.296, n=323; BEIR Table 2 TAS-B 0.319 nDCG@10 | cutoff (they report @100); doc truncation (ours `max_seq_length=256`, 78.8% of docs clipped per LESSONS; BEIR 512 pieces) | The dense baseline is in the range the field reports for this model (recall@100 within 0.0085). We cannot claim the nDCG@10 level is comparable to BEIR's without the gain check. |
+| BM25 (nb 03) | nDCG@10 0.2678, recall@100 0.2187 | BEIR BM25 nDCG@10 0.325, recall@100 0.250; Bruch Lex recall@100 0.255, nDCG@100 0.268 | `rank_bm25` BM25Okapi (k1=1.5, b=0.75 defaults read from the installed package), `.lower().split()`, no stemming, no punctuation strip | Our BM25 is about 0.057 nDCG@10 and 0.03 to 0.04 recall@100 under the two published BM25s. We can claim "this untuned BM25 loses to MiniLM"; we cannot claim "BM25 loses to dense on NFCorpus". BEIR's own table has BM25 (0.325) above TAS-B (0.319). |
+| RRF (nb 03, pool-depth-rrf) | nDCG@10 0.3093 (null vs dense); recall@100 0.2989 vs dense 0.3115, Δ −0.0126, CI [−0.0254, −0.0007] | Bruch Table 2, same dense model, same 323 queries, RRF k/η=60: recall@100 **0.327 vs dense 0.320**, nDCG@100 **0.312 vs 0.296**, RRF significantly above both parents (p<0.01) | their BM25 is stemmed and tuned (recall 0.255); ours is not (0.2187) | The result has the **opposite sign** of the field's on a matching dense model. The likely driver is the weaker BM25 (a fused list is bounded by its parents: the recall@100 ordering Lex 0.255 < Sem 0.320 < RRF 0.327 needs a lexical list that adds docs dense lacks). That is a hypothesis, not tested. We can claim "RRF with an untuned BM25 does not help"; we cannot claim "the source system's null transferred" or "RRF doesn't help on NFCorpus". |
+| LLM-judge rerank (nb 04) | nDCG@10 0.4052 (+0.0885, CI [+0.071, +0.106]), dense top-50, judge alias `opus`, version not recorded | RankGPT Table 1 NFCorpus: BM25 30.75 → gpt-4 38.47 (+7.7), gpt-3.5 35.62 (+4.9); monoT5-3B 38.97 | first stage (BM25 top-100 vs dense top-50), model, list-wise windowing; gpt-4 reranks only the gpt-3.5 top 30 | Same direction, same order of size (+4.9 to +8.9). We cannot say we match, beat or trail GPT-4: pool, first stage and model differ. |
+| zerank-1-small (nb 04) | nDCG@10 0.3881 (+0.0714) | zELO report: no NFCorpus. RankGPT: monoT5-3B 38.97, Cohere v2 36.36, monoBERT 36.88 | different first stage; different model | We can say it lands where published cross-encoders land on NFCorpus (36 to 39 points). We cannot cite a vendor number for it. |
+| recall@50 frozen under rerank | max per-query \|Δ\| = 0.0 | none: arithmetic | n/a | Not a field claim. Unchanged. |
+| GLiClass v3 and v4-edge (nb 04) | −0.0386 (CI [−0.0601, −0.0177]); +0.0050 (CI [−0.0147, +0.0251]) | none: the GLiClass paper reports classification only | n/a | We can claim what we measured. We cannot say it "fails to reproduce" anything. |
+| nb 07 context lines | pooled +0.0051 (CI [−0.0011, +0.0117]); per-chunk max +0.0238 | ConTEB Table 2 (72.4 vs 52.0 on context-dependent sets; 63.2 = 63.2 on unchunked NanoBEIR); Anthropic post (1 − recall@20, 5.7% → 3.7%) | ConTEB documents are long and chunks lose antecedents; ours are ~1.7k-char abstracts in about five chunks | Consistent with ConTEB's own split (gains where context is missing, none where it is not). We cannot compare magnitudes. |
+| uibk-first-stage | nDCG@10 0.3894; recall@50 0.2976 | UIBK Table 2: 38.79 (MTEB, docs to 2048 tokens); Table 3 decontaminated 29.32 | we do not pin document length; decontaminated BEIR is a reduced subset (LateOn also drops 37.79 → 27.17) | The score reproduces the published one. The decontaminated drop is a subset effect shared by every model, so it is not evidence about leakage; the paper removed only rows whose *query* equals a BEIR query, and its ablations (Section 7) are scored on BEIR averages. Our "not a held-out number" caveat stands. |
+| pool-depth-dense / bm25 / rrf / uibk | dense recall@200 0.3833 → @300 0.4242 (+0.0409); rrf 0.3648 → 0.4209 (+0.0561); bm25 0.2610 → 0.2952 (+0.0342); uibk 0.4209 → 0.4791 (+0.0582) | Pool-depth paper Table II, 200 → 300: 4B STARD +1.27, CSAID +2.83 points; 0.6B STARD +3.58, CSAID +4.96 points | their recall is already 86 to 95% with 1.9 positives per query; ours is 0.25 to 0.48 with 38.2 | The per-100-docs gain on NFCorpus (3.4 to 5.8 points) is the same size as the 0.6B model's on legal. "No saturation" is a statement about headroom (a 0.42 recall has 0.58 left), not a disagreement with the paper's "diminishing". We cannot claim to have reproduced or refuted the paper. |
+| rerank-gate-oracle | LLM ceiling +0.0065, harmed 27/323 (8.4%); gates at about 30% skips lose −0.0219 / −0.0215 (CIs exclude 0); zerank ceiling +0.0135 | Gating paper Table 4: nine cells, 51% skipped at −1.2 pp; score-gap gate skips 0 to 2% under constraint; random gate loses 2 to 11 pp; AUC 0.16 to 0.70 | multi-hop QA, last-hop coverage, learned gate with 27 features, Llama-3.3-70B | Same qualitative picture (cheap per-query signals are weakly discriminative; a matched-skip random gate is the right baseline). It has no 0.65 AUC line, so "0.016 over the paper's 0.65 line" in LESSONS row 27 and the prediction's "as in the paper (AUC < 0.65)" are misattributions. |
+
+## Open-question check
+
+Lanes with this cwd in `laptop-scheduler/queues/labs.json`: `uibk-first-stage`, `pool-depth`, `uibk-pool-depth`,
+`rerank-gate-oracle`, `canary-drift` all have committed results; `predictions/` has no file without a result.
+`rerank-pool100` and `rerank-uibk50` are **dropped** (operator, 12 Nov 2026: no reader question and no decider).
+
+- **Answered by a published [F] result?** No. No paper read reports a widened rerank pool or a uibk-first-stage pool on
+  NFCorpus. The pool-depth paper (rank 9) trains rerankers in another regime and says its top-300 is a controlled budget,
+  not an optimum. The dropped lanes stay dropped; nothing here supplies the missing decider.
+- **Design or metric below what the [F] papers do?** Two, tied to rows. (1) **BM25** (rows 1 and 2): `nb 03` and
+  `pool-depth-rrf` use an unstemmed, unstripped BM25 with library defaults; both papers use stemmed BM25 with k1=0.9,
+  b=0.4. The `README` already calls it a "preprocessing ceiling", but SHOWCASE (lines 34 to 35, receipt 4 at line 80), LESSONS rows
+  37 and 38 and README lines 70 to 73 still state the RRF null as a finding about the corpus or embedder. (2) **nDCG gain
+  function** (metric table): unstated in every source, exponential in ours.
+- **New question this read opens (not queued, not edited):** does a stemmed, punctuation-stripped BM25 at k1=0.9, b=0.4
+  lift BM25 recall@100 to about 0.25 and make RRF beat dense at recall@100 on these 323 queries, as Bruch Table 2
+  reports for the same dense model? Decider: operator, whether SHOWCASE receipt 4 and LESSONS rows 37 and 38 keep their
+  wording or are reworded as "with an untuned BM25". Flips if tuned-BM25 RRF − dense on recall@100 has a CI above 0
+  (the field's sign) or still includes 0 or trails (the null stands, now with a tuned parent). Its prediction would have
+  to be committed first. A second, cheaper question: dense nDCG@10 from `dense_pool.json` under linear vs exponential
+  gain, no model call, qrels only.
+- **Briefs and predictions to amend openly (the operator does it, with a dated note):** the `rerank-gate-oracle`
+  prediction's "AUC < 0.65 ... as in the paper" and LESSONS row 27's "the paper's 0.65 line"; the LESSONS origin label
+  for `pool-depth` ("embedding recall saturates by top-300") against the paper's own scope statement.
+
+## What our pages may and may not claim
+
+**May claim (each tied to a row):**
+- On NFCorpus, reranking a first-stage pool with a cross-encoder or an LLM adds several nDCG@10 points, in the range
+  RankGPT Table 1 and BEIR Table 2 show (rows 1 and 3).
+- Our MiniLM-L6 dense baseline sits where the field's numbers for this model sit on recall@100 (row 2).
+- UIBK-Embedding-v1's NFCorpus nDCG@10 reproduces the paper's 38.79 within 0.0015 (row 8).
+- Dense, BM25, RRF and uibk recall all keep rising from 200 to 300 on NFCorpus, at a rate close to the legal paper's
+  0.6B model, from a much lower base (rows 9 and the pool-depth comparison).
+- A one-feature pre-rerank gate recovers none of the oracle ceiling on NFCorpus, and a matched-skip random gate is the
+  baseline that matters; both are what the gating paper also reports qualitatively (row 10).
+- Context lines do not help where chunks lose nothing, and help where they lose their document; ConTEB measures the same
+  split (row 6).
+
+**May not claim:**
+- "BM25 loses to dense on NFCorpus", "lexical is not strong here", "the source system's RRF null transferred", "RRF does
+  not help on BEIR-type data" (SHOWCASE.md lines 34 to 35 (scoreboard) and receipt 4 (line 80), LESSONS rows 37 and 38, README lines 70 to 73,
+  card "Blending keyword search with embedding search did not beat embedding search alone"). The field's matching setup
+  gets the opposite sign with a tuned BM25. Allowed wording: "with an untuned BM25 (library defaults, no stemming)".
+- Any "matches", "beats" or "trails" against GPT-4, Cohere, monoT5 or a vendor figure for zerank (rows 3 and 4).
+- Any comparison of absolute nDCG@10 to BEIR as like for like, until the gain function is checked.
+- "UIBK is better than the field on NFCorpus": the model's authors tune on BEIR; the paper's own seed spread is 0.2 on
+  the 15-dataset average (row 8).
+- "Embedding recall saturates" or "does not saturate" as a general statement. Ours is a headroom fact about NFCorpus at
+  recall 0.25 to 0.48; the paper's is a diminishing-returns fact at 86 to 95% (row 9).
+- Any GLiClass retrieval claim attributed to the GLiClass paper (row 5).
+- Attributing an AUC 0.65 threshold to the gating paper (row 10).
+
+## Not done
+
+- No separate "last 90 days, cites two of these, same metric" search was run. Rows 8, 9 and 10 are all from the last 90
+  days and were chosen because the lab's cards cite them.
+- GLiClass v4-edge and zerank model cards were not read here (rank [S]); the rows above use the papers only.
+- ConTEB footnotes 4 and 5 (how the contextual arm was run) were not recoverable from the text extraction.
+- Appendices of rows 1, 3, 4 and 10 were read only where cited.
