@@ -1,0 +1,3 @@
+# Inbox 2026-11-17: in-house office corpus (operator decides)
+
+- [retrieval] An in-house, fake-data office corpus built from the automations demo data: about 300 queries plus graded 0/1/2 judgments on a pooled top-20 union (about 12k pairs), written blind by a separate session. It is the only route that is graded, densely judged and fits the automations domain. It has no published comparator, needs 3 to 5 lanes, and needs a human-graded subset or a non-Claude rerank judge (nb 04 self-agreement). See `docs/second-corpus-2026-11-17.md`, last section. Not queued; operator decides. (lane lab-rag-second-corpus-scope, 2026-11-17)
