@@ -65,7 +65,7 @@ def test_defaults_match_committed_runs():
 
 
 def test_unknown_method_lists_registry():
-    with pytest.raises(KeyError, match="registered: bm25, dense, dense-prf, gated-rerank, rrf"):
+    with pytest.raises(KeyError, match="registered: bm25, dense, dense-hyde, dense-prf, dense-q2d, gated-rerank, rrf"):
         get_method("colbert")
 
 
@@ -158,3 +158,78 @@ def test_dense_prf_defaults_and_validation():
     for bad in ({"k": -1}, {"k": True}, {"k": 1.5}, {"weights": "rocchio"}):
         with pytest.raises(ValueError):
             DensePrf(**bad)
+
+
+# ── dense-hyde / dense-q2d (lane query-rewrite): a committed model passage per query ──
+
+import json
+
+import ragexp.rewrite
+from ragexp.methods import DenseHyde, DenseQ2d
+from ragexp.rewrite import sha256_file
+
+
+@pytest.fixture
+def gens_file(tmp_path, monkeypatch):
+    def write(passages):
+        path = tmp_path / "generations.json"
+        path.write_text(json.dumps({"generations": {q: (None if p is None else {"passage": p}) for q, p in passages.items()}}))
+        monkeypatch.setattr(ragexp.rewrite, "GENERATIONS_FILE", path)
+        return sha256_file(path)
+    return write
+
+
+def test_hyde_with_the_query_as_passage_reproduces_dense(fake_emb, gens_file):
+    sha = gens_file({q.query_id: q.text for q in QUERIES})
+    assert DenseHyde(sha256=sha).rank(CORPUS) == Dense().rank(CORPUS)
+
+
+def test_failed_generation_falls_back_to_dense_in_both_arms(fake_emb, gens_file):
+    sha = gens_file({q.query_id: None for q in QUERIES})
+    assert DenseHyde(sha256=sha).rank(CORPUS) == Dense().rank(CORPUS)
+    assert DenseQ2d(sha256=sha).rank(CORPUS) == Dense().rank(CORPUS)
+
+
+def test_hyde_averages_query_and_passage_vectors(fake_emb, gens_file):
+    sha = gens_file({"q1": "grey weather brussels", "q2": "vegetables"})
+    e = FakeEmbedder()
+    docs = e.encode([d.full for d in DOCS])
+    expected = {}
+    for q, p in (("q1", "grey weather brussels"), ("q2", "vegetables")):
+        v = e.encode([dict((x.query_id, x.text) for x in QUERIES)[q]])[0] + e.encode([p])[0]
+        v /= np.linalg.norm(v)
+        expected[q] = [DOCS[i].doc_id for i in np.argsort(-(docs @ v))]
+    assert DenseHyde(sha256=sha).rank(CORPUS) == expected
+
+
+def test_q2d_encodes_query_sep_passage(fake_emb, gens_file, monkeypatch):
+    sha = gens_file({"q1": "pills", "q2": None})
+    seen = []
+
+    class Spy(FakeEmbedder):
+        def encode(self, texts):
+            seen.extend(texts)
+            return super().encode(texts)
+
+    monkeypatch.setattr(ragexp.embed, "Embedder", Spy)
+    DenseQ2d(sha256=sha).rank(CORPUS)
+    assert "statin cholesterol [SEP] pills" in seen and "grey weather" in seen
+
+
+def test_rewrite_methods_refuse_a_changed_or_unpinned_file(fake_emb, gens_file):
+    sha = gens_file({q.query_id: "x" for q in QUERIES})
+    for cls in (DenseHyde, DenseQ2d):
+        with pytest.raises(ValueError, match="changed"):
+            cls(sha256="0" * 64).rank(CORPUS)
+        with pytest.raises(ValueError, match="sha256"):
+            cls().rank(CORPUS)
+    gens_file({"q1": "x"})  # q2 missing
+    with pytest.raises(ValueError, match="no generation entry"):
+        DenseHyde(sha256=sha256_file(ragexp.rewrite.GENERATIONS_FILE)).rank(CORPUS)
+
+
+def test_rewrite_methods_defaults():
+    for key, cls in (("dense-hyde", DenseHyde), ("dense-q2d", DenseQ2d)):
+        m = get_method(key, sha256="ab")
+        assert isinstance(m, cls) and m.name == key
+        assert init_params(m) == {"sha256": "ab", "model": "sentence-transformers/all-MiniLM-L6-v2"}
