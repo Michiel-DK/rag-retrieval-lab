@@ -1,0 +1,57 @@
+{
+ "created_utc": "2026-11-17T13:26:04+00:00",
+ "describe": {
+  "class": "DensePrf",
+  "name": "query-prf",
+  "params": {
+   "k": 3,
+   "model": "sentence-transformers/all-MiniLM-L6-v2",
+   "weights": "equal"
+  }
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50,
+   300
+  ]
+ },
+ "exploratory": false,
+ "init_params": {
+  "k": 3,
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "weights": "equal"
+ },
+ "means": {
+  "ndcg@10": 0.3119699146193655,
+  "recall@10": 0.14929488036437177,
+  "recall@300": 0.45420054095485113,
+  "recall@50": 0.26520936905629705
+ },
+ "method": "dense-prf",
+ "n_queries": 323,
+ "name": "query-prf",
+ "prediction": {
+  "commit": "1fa7123a462bd47c7f0e33dd3e1e51361316f6d7",
+  "file": "query-prf.md"
+ },
+ "repo": {
+  "commit": "644547544375feb0a33e14f75db66f2a41191f0c",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "query-prf.json",
+ "scores_sha256": "be054adf464ace79b7b9b8f8a53612ec2c3c81638f0689fdd9bb11c1fdfd8535",
+ "versions": {
+  "datasets": "5.0.0",
+  "numpy": "2.5.1",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.6.0",
+  "torch": "2.13.0"
+ }
+}
