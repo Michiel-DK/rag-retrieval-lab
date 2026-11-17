@@ -42,8 +42,8 @@ MiniLM-L6, `max_seq_length=256`) by document count, with documents clipped at 25
 
 | corpus | docs | test queries | judgments / query | graded? | doc structure | embeds on the laptop | licence (commercial use; can we copy into a public repo?) | domain fit to the automations industries | published numbers for our arms |
 |---|---|---|---|---|---|---|---|---|---|
-| **NFCorpus** (anchor) | 3,633 [F] BEIR T1 | 323 [F] | 38.2 [F] | yes, 3-level [F] | title + abstract [F] | <1 min (README) | **not reported** by its authors (BEIR App. E [F]); HF card for the BEIR packaging says CC BY-SA 4.0 [S] | none: medical abstracts | BEIR T2 [F], Bruch T2 [F] (same MiniLM, RRF) |
-| **FiQA-2018** (BEIR) | 57,638 [F] BEIR T1 (57,640 in the source paper [F]) | 648 [F] [M] | 2.63 [M] (2.6 [F]); **implicit**: a question's accepted answer posts, not assessor judgments (Maia et al. §2.2 [F]) | no, all 1 [M] | answer post, no title (BEIR T1 title column [F]) | ~8–15 min est. | data licence **not reported** (BEIR App. E [F]); the CC BY 4.0 on the WWW'18 paper covers the paper, not the data [F]; the posts are StackExchange content, CC BY-SA [S] | partial. A client asking a finance question resembles `accounting-client-questions` (a client mails a question, answered from the dossier). But the source is opinion posts on personal investing, not a firm's documents | **yes [F]**: BEIR T2 nDCG@10 BM25 0.236, TAS-B 0.300, BM25+CE 0.347; T9 recall@100 BM25 0.539. No MiniLM-L6 or RRF number at [F] (Bruch has no FiQA row; the MTEB leaderboard lists MiniLM: [S] only) |
+| **NFCorpus** (anchor) | 3,633 [F] BEIR T1 | 323 [F] | 38.2 [F] | yes, 3-level [F] | title + abstract [F] | <1 min (README) | **not reported** by its authors (BEIR App. E [F]); the HF card of the BEIR packaging (`BeIR/nfcorpus`) says cc-by-sa-4.0 [A] | none: medical abstracts | BEIR T2 [F], Bruch T2 [F] (same MiniLM, RRF) |
+| **FiQA-2018** (BEIR) | 57,638 [F] BEIR T1 (57,640 in the source paper [F]) | 648 [F] [M] | 2.63 [M] (2.6 [F]); **implicit**: a question's accepted answer posts, not assessor judgments (Maia et al. §2.2 [F]) | no, all 1 [M] | answer post, no title (BEIR T1 title column [F]) | ~8–15 min est. | data licence **not reported** (BEIR App. E [F]); the CC BY 4.0 on the WWW'18 paper covers the paper, not the data [F]; the posts are StackExchange content, CC BY-SA [S] | partial. A client asking a finance question resembles `accounting-client-questions` (a client mails a question, answered from the dossier). But the source is opinion posts on personal investing, not a firm's documents | **yes, for every first-stage arm [F]**: BEIR T2 nDCG@10 BM25 0.236, TAS-B 0.300, BM25+CE 0.347; T9 recall@100 BM25 0.539. **Bruch T2** (same all-MiniLM-L6-v2, RRF η = 60, stemmed BM25 k1 0.9 / b 0.4, cutoff **1000** for FiQA): Recall@1000 Lex 0.720, Sem 0.908, TM2C2 0.907, RRF 0.904; NDCG@1000 Lex 0.315, Sem 0.467, TM2C2 0.496, RRF 0.464. Sem is not marked significantly different from RRF (no ∗), so on FiQA the field's RRF-vs-dense result is itself a null |
 | **CQADupStack** (BEIR) | 457,199 over 12 subforums [F]; one subforum 17,405–40,221 (webmasters, english) [S] HF size API | 13,145 [F]; per subforum 506–2,906 [M] | 1.80 pooled [M] vs **1.4 in BEIR T1** [F] (BEIR averages over subforums; the two do not match and this lane did not resolve why); median 1 [M] | no, all 1 [M] | title + body [F] | all 12: ~1.5–2 h est., fails "a laptop re-runs"; one subforum ~3–6 min est. | Apache-2.0 (BEIR App. E [F]); the content is StackExchange CC BY-SA [S] | weak. The task is "find the duplicate of this forum question". Closest is de-duplicating support tickets, which no current flow does. The queries are forum titles, not office requests | BEIR T2 nDCG@10 **mean of 12 only** [F]: BM25 0.299, TAS-B 0.314, BM25+CE 0.370; no per-subforum number at [F] |
 | **ConTEB** (row 6 of `literature-2026-11-16.md`) | Insurance: 1 document in 60 chunks (T1 [F], 60 rows [M]); ESG Reports 30 docs | Insurance 120 [F] [M]; ESG Reports 36 [F] | 1 gold chunk per query [M] | no [M] | chunks of one long document [F] | seconds | HF dataset card names no licence [A] | insurance statistics per EU country, the closest *topic* to policy documents. But Insurance is a **controlled** set: questions were written by hand to be ambiguous without document structure (§3.2 "Sabotage", App. A.3 [F]). It tests chunk context, not office search | T2 nDCG@10 per model [F] (ModernBERT-large, Anthropic Contextual, BM25). Not our encoder |
 | **WixQA** (Cohen et al., arXiv 2505.08643, 2025) | 6,221 help-centre articles [F] [M]: 66% articles, 32% feature requests, 1% known issues [F]; mean 2,270 chars, p90 5,452 [M] | ExpertWritten 200 [F] [M]; Simulated 200 [F] [M]; Synthetic 6,221 (GPT-4o-generated [F], not usable as a test set) | ExpertWritten 1.29 [M]; 52 of 200 queries need >1 article [M] (paper 27% [F]). Simulated 1.15 [M], 27 of 200 multi [M] (paper 14% [F]) | no: the list of article URLs the expert used for the answer [F] App. A | title + contents (+ html) [M] | ~1–2 min est.; most articles are clipped at 256 tokens (mean 2,270 chars), so nb 05's pooling question returns | **MIT**, KB and datasets [F] abstract + HF card [A]. Commercial use and copying allowed with the notice | **closest of the public sets.** Real customer queries to a company's own support knowledge base, answered by its support experts [F] §3.2. That is the `accounting-client-questions` shape (question in, answer from the firm's own documents, a human approves) and the support side of the real-estate and recruitment flows. English and SaaS, not Dutch office admin | **none for our metrics.** Tables 3–5 report GPT-4o-judged "context recall" at top-5 for BM25 and e5-large-v2 (ExpertWritten 0.73 / 0.81) [F]. That is a model-judge metric on answer coverage, not nDCG or recall over the qrels. No comparator |
@@ -51,7 +51,7 @@ MiniLM-L6, `max_seq_length=256`) by document count, with documents clipped at 25
 Considered and dropped (rank [A]/[S], not read in full):
 - **PJB** (person–job retrieval, arXiv 2603.17386, Mar 2026) [S]. Chinese, about 200k resumes, and the annotation process is unclear per a third-party page.
 - **DevRev-Search** (support tickets, arXiv 2601.04646, Jan 2026) [S]. Labels come mainly from an LLM judge, so it fails "human judgments".
-- **TechQA** (IBM technotes; cited in WixQA §2 [F]). The corpus is about 800k technotes [S], too big for a laptop re-run.
+- **TechQA** (IBM technotes; WixQA §2 and Table 1 [F]: 600 test questions, IBM Technotes as the KB). Corpus size not checked in this lane.
 - **Doc2Dial / MultiDoc2Dial** (government-service documents; WixQA §2 [F]). The queries are dialogue turns, not standalone searches.
 - **Graded BEIR sets** (TREC-COVID, DBPedia, Robust04, TREC-NEWS, Touché; BEIR T1 [F]). They meet "graded", but each is 171k to 4.6M docs, and they fit the domain no better than NFCorpus.
 
@@ -82,15 +82,19 @@ openly: n = 200; about 1.3 binary judgments per query; and **no published number
 our own instrument. BEIR's [F] numbers cannot check our BM25 preprocessing here. The large effects (rerank, BM25) can transfer or
 fail at n = 200. The two nulls can only be bounded to about ±0.02.
 
-**Runner-up: FiQA-2018.** n = 648 gives CIs about half as wide. BEIR Table 2 [F] gives a published BM25 (0.236) and cross-encoder
-rerank (0.347) to set ours beside, and that is the check the NFCorpus literature read says our untuned BM25 needs. But its
-judgments are implicit answer-post links, its data licence is not reported, and personal-investing opinion posts are further from
-client office work than a support knowledge base is.
+**Runner-up, and the better calibration corpus: FiQA-2018.** n = 648 gives CIs about half as wide. It is the one candidate with
+a published [F] number for **every** first-stage arm we run, on the same encoder: Bruch Table 2 has all-MiniLM-L6-v2, stemmed BM25
+and RRF η = 60 on the same 648 queries (at cutoff 1000), and BEIR Table 2 adds BM25 nDCG@10 0.236 and a cross-encoder rerank at
+0.347. That is the check the NFCorpus literature read says our untuned BM25 needs, and on FiQA the field's own RRF-vs-dense result
+is a null (0.464 vs 0.467 NDCG@1000), so our NFCorpus RRF null can be set against a published null. Against it: its judgments are
+implicit answer-post links, its data licence is not reported, and personal-investing opinion posts are further from client office
+work than a support knowledge base is.
 
-Why not the order reversed: the operator's question is domain fit ("more applicable for automations industries"). FiQA's
-advantages (power, comparators) serve the transfer question better, but on a corpus that answers the domain question only partly.
-If the operator weighs the BM25 check and power above fit, reverse the order. The baselines brief is written so the corpus name is
-the only thing that changes.
+Why not the order reversed: the reader question is C5, office work, and the operator asked for domain fit ("more applicable for
+automations industries"). FiQA answers a different question better: does our harness agree with the field on a second corpus
+(power, comparators for dense, BM25, RRF and a reranker). WixQA answers the operator's question, but with no comparator and at
+n = 200. The trade is close. If the operator wants the calibration first, reverse the order: FiQA first, WixQA after. The
+baselines brief is written so the corpus block is the only thing that changes.
 
 **Where it runs.** This repo's own scope rule (README "Scope of the repo", 2 Nov 2026; `CLAUDE.md`: "a new dataset or modality is a
 new repo that copies this skeleton") keeps a second corpus out of this tree. The baselines lane therefore bootstraps a private
@@ -107,7 +111,7 @@ blind by a separate session, as `as-crm-security-build` did for its held-out cas
   about 250 queries give ±0.019 and 325 give ±0.017. Judgments: pool the top 20 of dense, BM25 and RRF per query (a union of about
   40 documents) and grade every pooled document 0/1/2. At 300 queries that is about 12,000 graded pairs, NFCorpus-like density
   (38/query). Corpus: 3,000 to 5,000 short documents, so it embeds in a minute or two like NFCorpus.
-- **Effort.** The repo holds about 340 files of demo fixtures (`projects/demo-*/fixtures`, sinks and replay logs). They seed the
+- **Effort.** The automations repo holds 130 files under `projects/*/fixtures/` (sinks, replay and execute logs). They seed the
   vocabulary but are not a document collection. Generating the corpus is one session. Writing 300 queries blind is a second. Grading
   12,000 pooled pairs is the bulk: model time if a model grades, days if a human does. Estimate: 3 to 5 lanes and about a week of
   calendar time, plus a held-out split frozen before any arm runs.
@@ -126,7 +130,7 @@ It is not queued. It is one line in `docs/inbox/2026-11-17-in-house-office-corpu
 Papers read in full this lane: BEIR, arXiv 2104.08663 (Tables 1, 2, 9; App. D, E); WixQA, arXiv 2505.08643 (all sections and
 appendices); Maia et al., "WWW'18 Open Challenge: Financial Opinion Mining and Question Answering", DOI 10.1145/3184558.3192301
 (both pages, Maynooth MURAL copy); ConTEB, arXiv 2505.24782 v2 (Table 1, §3.2, App. A.3, A.5; row 6 of the 16 Nov literature
-read). Bruch et al. 2210.11934 was searched for FiQA/CQADupStack rows and has none. PDFs are not committed.
+read). Bruch et al. 2210.11934 (Tables 1, 2, 3 and §3.2 setup): FiQA row present (above); no CQADupStack row. PDFs are not committed.
 
 Downloaded qrels and query files (sha256, from `huggingface.co/datasets`, fetched 2026-11-17):
 - `BeIR/fiqa-qrels` `test.tsv` 6adc2a640dcdd22bb8b3858f89107adef2a7c3db20a63550dfa7a0f71e379e44
