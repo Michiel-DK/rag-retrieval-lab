@@ -221,11 +221,56 @@ class GatedRerank:
         return {q: (g["judge_order"][q] if g["call"][q] else g["dense_order"][q]) for q in g["call"]}
 
 
+@dataclass
+class DensePrf:
+    """Lane query-prf: vector pseudo-relevance feedback on the dense query (Li et al., arXiv 2108.11044, Eq. 7).
+
+    First pass is ``dense`` exactly (same encoder, same cached doc matrix, query encoded
+    alone, same argsort). Then q' = (q + d_1 + ... + d_k) / (k + 1) over the unit vectors of
+    the top-k first-pass docs, re-normalised, and one more exact inner-product search over
+    the whole corpus. ``weights="equal"`` is the only setting (the paper's Vector Average;
+    Rocchio with alpha = 1/(k+1)). ``k=0`` returns the first-pass ranking unchanged. No model call.
+    """
+
+    k: int = 3
+    weights: str = "equal"
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    name: str = "dense-prf"
+
+    def __post_init__(self):
+        if isinstance(self.k, bool) or not isinstance(self.k, int) or self.k < 0:
+            raise ValueError(f"k must be a non-negative integer, got {self.k!r}")
+        if self.weights != "equal":
+            raise ValueError(f"weights must be 'equal', got {self.weights!r}")
+
+    def params(self) -> Dict[str, object]:
+        return {"k": self.k, "weights": self.weights, "model": self.model}
+
+    def rank(self, corpus: Corpus) -> Rankings:
+        import numpy as np
+
+        from . import embed
+
+        emb = embed.Embedder(self.model)
+        doc_matrix = emb.encode([d.full for d in corpus.docs])
+        ids = corpus.doc_ids
+        out: Rankings = {}
+        for q in corpus.queries:
+            qv = emb.encode([q.text])[0]
+            order = np.argsort(-(doc_matrix @ qv))  # retrieve.dense, verbatim
+            if self.k > 0:
+                q2 = (qv + doc_matrix[order[: self.k]].sum(axis=0)) / (self.k + 1)
+                q2 = q2 / np.linalg.norm(q2)
+                order = np.argsort(-(doc_matrix @ q2))
+            out[q.query_id] = [ids[i] for i in order]
+        return out
+
+
 REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk,
-                                              "gated-rerank": GatedRerank}
+                                              "gated-rerank": GatedRerank, "dense-prf": DensePrf}
 # Registered methods with no committed run under the registry key itself: every run of
 # them is a named `ragexp run` with a manifest. `check --all` checks those runs, not the key.
-RUN_ONLY = frozenset({"gated-rerank"})
+RUN_ONLY = frozenset({"gated-rerank", "dense-prf"})
 
 
 def get_method(name: str, **params) -> Method:
@@ -239,4 +284,4 @@ def describe(method: Method) -> Dict[str, object]:
     return {"name": method.name, "class": type(method).__name__, "params": method.params()}
 
 
-__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]
+__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "DensePrf", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]

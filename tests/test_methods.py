@@ -65,7 +65,7 @@ def test_defaults_match_committed_runs():
 
 
 def test_unknown_method_lists_registry():
-    with pytest.raises(KeyError, match="registered: bm25, dense, gated-rerank, rrf"):
+    with pytest.raises(KeyError, match="registered: bm25, dense, dense-prf, gated-rerank, rrf"):
         get_method("colbert")
 
 
@@ -119,3 +119,42 @@ def test_uibk_method_interface(monkeypatch):
     p = init_params(m)
     assert p["revision"] == "b18df82e77306006a1dd0162199f6dfeacb5492e" and p["model"] == "DataScience-UIBK/uibk-embedding-v1"
     assert get_method("uibk-first-stage", **p).params() == m.params()
+
+
+# ── dense-prf (lane query-prf): vector PRF on the dense query ──
+
+from ragexp.methods import DensePrf
+
+
+def test_dense_prf_k0_reproduces_dense_exactly(fake_emb):
+    assert DensePrf(k=0).rank(CORPUS) == Dense().rank(CORPUS)
+
+
+def test_dense_prf_k1_ranks_by_normalised_query_plus_top_doc(fake_emb):
+    e = FakeEmbedder()
+    docs = e.encode([d.full for d in DOCS])
+    expected = {}
+    for q in QUERIES:
+        qv = e.encode([q.text])[0]
+        top = np.argsort(-(docs @ qv))[0]
+        q2 = (qv + docs[top]) / 2
+        q2 /= np.linalg.norm(q2)
+        expected[q.query_id] = [DOCS[i].doc_id for i in np.argsort(-(docs @ q2))]
+    assert DensePrf(k=1).rank(CORPUS) == expected
+
+
+def test_dense_prf_changes_the_ranking_when_feedback_pulls(fake_emb):
+    # q "s": first pass a (s,x) > b (s,w,w) > c (x,x,x,x,s). a's x pulls q' toward c, past b.
+    docs = [Doc("a", "sx", ""), Doc("b", "sww", ""), Doc("c", "xxxxs", "")]
+    corpus = Corpus(docs, [Query("q", "s")], {"q": {"c": 1}})
+    assert Dense().rank(corpus)["q"] == ["a", "b", "c"]
+    assert DensePrf(k=1).rank(corpus)["q"] == ["a", "c", "b"]
+
+
+def test_dense_prf_defaults_and_validation():
+    m = get_method("dense-prf")
+    assert m.params() == {"k": 3, "weights": "equal", "model": "sentence-transformers/all-MiniLM-L6-v2"}
+    assert init_params(m) == {"k": 3, "weights": "equal", "model": "sentence-transformers/all-MiniLM-L6-v2"}
+    for bad in ({"k": -1}, {"k": True}, {"k": 1.5}, {"weights": "rocchio"}):
+        with pytest.raises(ValueError):
+            DensePrf(**bad)
