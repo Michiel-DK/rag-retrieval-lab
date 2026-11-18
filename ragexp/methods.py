@@ -266,11 +266,78 @@ class DensePrf:
         return out
 
 
+@dataclass
+class DenseHyde:
+    """Lane query-rewrite: HyDE Eq. 8 at N = 1 (Gao et al., arXiv 2212.10496).
+
+    v = normalise((f(q) + f(p)) / 2), f = the ``dense`` encoder (unit vectors, same cache),
+    p = the query's committed model passage, then the same exact inner-product search as
+    ``dense``. Reads only ``results/query-rewrite/generations.json``, pinned by ``sha256``
+    (required: ``--param sha256=<hex>``). A query whose passage is ``None`` (failed call)
+    gets its plain query vector, i.e. its ``dense`` ranking. No model call.
+    """
+
+    sha256: str = ""
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    name: str = "dense-hyde"
+
+    def params(self) -> Dict[str, object]:
+        return {"sha256": self.sha256, "model": self.model, "generations": "results/query-rewrite/generations.json"}
+
+    def _passages(self, corpus: Corpus) -> Dict[str, Optional[str]]:
+        from .rewrite import GENERATIONS_FILE, load_generations
+
+        if not self.sha256:
+            raise ValueError(f"{self.name} needs --param sha256=<hex> of {GENERATIONS_FILE.name}")
+        gens = load_generations(GENERATIONS_FILE, sha256=self.sha256)
+        missing = [q.query_id for q in corpus.queries if q.query_id not in gens]
+        if missing:
+            raise ValueError(f"{len(missing)} queries have no generation entry, e.g. {missing[0]}")
+        return gens
+
+    def query_vector(self, emb, query: str, passage: Optional[str]):
+        import numpy as np
+
+        qv = emb.encode([query])[0]
+        if passage is None:
+            return qv
+        v = (qv + emb.encode([passage])[0]) / 2
+        return v / np.linalg.norm(v)
+
+    def rank(self, corpus: Corpus) -> Rankings:
+        import numpy as np
+
+        from . import embed
+
+        gens = self._passages(corpus)
+        emb = embed.Embedder(self.model)
+        doc_matrix = emb.encode([d.full for d in corpus.docs])
+        ids = corpus.doc_ids
+        return {q.query_id: [ids[i] for i in np.argsort(-(doc_matrix @ self.query_vector(emb, q.text, gens[q.query_id])))]
+                for q in corpus.queries}
+
+
+@dataclass
+class DenseQ2d(DenseHyde):
+    """Lane query-rewrite: Query2doc Eq. 2, the dense form (Wang et al., arXiv 2303.07678).
+
+    v = f("{query} [SEP] {passage}"), the query once (the paper repeats it only for sparse,
+    Eq. 1). The literal "[SEP]" tokenises to MiniLM-L6's special token, id 102 (checked
+    2026-11-17); MiniLM truncates at 256 word pieces. Same file, pin and fallback as ``dense-hyde``.
+    """
+
+    name: str = "dense-q2d"
+
+    def query_vector(self, emb, query: str, passage: Optional[str]):
+        return emb.encode([query if passage is None else f"{query} [SEP] {passage}"])[0]
+
+
 REGISTRY: Dict[str, Callable[..., Method]] = {"bm25": Bm25, "dense": Dense, "rrf": Rrf, "uibk-first-stage": Uibk,
-                                              "gated-rerank": GatedRerank, "dense-prf": DensePrf}
+                                              "gated-rerank": GatedRerank, "dense-prf": DensePrf,
+                                              "dense-hyde": DenseHyde, "dense-q2d": DenseQ2d}
 # Registered methods with no committed run under the registry key itself: every run of
 # them is a named `ragexp run` with a manifest. `check --all` checks those runs, not the key.
-RUN_ONLY = frozenset({"gated-rerank", "dense-prf"})
+RUN_ONLY = frozenset({"gated-rerank", "dense-prf", "dense-hyde", "dense-q2d"})
 
 
 def get_method(name: str, **params) -> Method:
@@ -284,4 +351,4 @@ def describe(method: Method) -> Dict[str, object]:
     return {"name": method.name, "class": type(method).__name__, "params": method.params()}
 
 
-__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "DensePrf", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]
+__all__ = ["Method", "Rankings", "Bm25", "Dense", "Rrf", "Uibk", "GatedRerank", "DensePrf", "DenseHyde", "DenseQ2d", "maxsim_rank", "REGISTRY", "RUN_ONLY", "get_method", "describe"]

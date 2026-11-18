@@ -36,6 +36,7 @@ From `LESSONS.md`, all deltas vs the dense baseline (MiniLM-L6), paired bootstra
 | LLM-judge rerank (nb 04) | **0.4052** (+0.0885, CI +0.071 – +0.106) | the only nb 01–04 intervention that beat the baseline |
 | zerank-1-small, 1.7B (nb 04) | 0.3881 (+0.0714) | ~80% of the LLM's lift with no per-query API cost (runs locally on a laptop; tens of seconds per query) |
 | UIBK-Embedding-v1, first stage alone (`ragexp run uibk-first-stage`, 2026-11-07) | **0.3894** (+0.0727, CI +0.054 – +0.092) | **ties zerank** (+0.0013, CI −0.017 – +0.020) with no reranker; no difference shown vs the LLM judge (−0.0158, CI −0.036 – +0.004); recall@50 0.2508 → 0.2976 (+0.047, CI +0.029 – +0.065), the metric no reranker here could move |
+| Haiku-written query passage, HyDE form (`ragexp run dense-hyde`, lane `query-rewrite`, 2026-11-17) | **0.3609** (+0.0442, CI +0.030 – +0.058) | the first query-side change to beat dense, against a predicted null: one passage per query, averaged with the query vector, $0.11 for 323 calls; recall@50 +0.027, recall@300 +0.054; still under the LLM judge (−0.044, CI −0.062 – −0.027). The Query2doc form (`q [SEP] p`) gives 0.3521 (+0.0354, CI +0.016 – +0.055) |
 
 The UIBK row was added on 2026-11-07, after this write-up, from a committed prediction
 (`predictions/uibk-first-stage.md`). What it does not claim: the predicted recall@50 range
@@ -43,6 +44,12 @@ The UIBK row was added on 2026-11-07, after this write-up, from a committed pred
 model card says its development decisions were taken on BEIR, NFCorpus included, so 0.3894 is
 not a held-out number. Re-derive it with `ragexp check uibk-first-stage` in the `uibk` venv
 (pyproject extra), about 13 minutes on two CPU threads.
+
+The query-rewrite row was added on 2026-11-17 from a committed prediction (`predictions/query-rewrite.md`),
+which leaned null and was refused. What it does not claim: NFCorpus queries are NutritionFacts page titles and its
+labels are the studies those pages cite, so a model that has read the pages may be recalling the source rather than
+rewriting the query. That is untested, and 0.3609 is not a held-out number. Re-derive with `ragexp check query-rewrite-hyde`
+(no model call: the passages are committed and pinned by sha256).
 
 ## Five receipts
 

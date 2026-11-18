@@ -1,0 +1,56 @@
+{
+ "created_utc": "2026-11-17T15:18:32+00:00",
+ "describe": {
+  "class": "DenseHyde",
+  "name": "query-rewrite-hyde",
+  "params": {
+   "generations": "results/query-rewrite/generations.json",
+   "model": "sentence-transformers/all-MiniLM-L6-v2",
+   "sha256": "0b1c4d0cbf85e389739c35ca14699d7faf93edc3fc203a8124695306e9adfd4d"
+  }
+ },
+ "eval": {
+  "ndcg_ks": [
+   10
+  ],
+  "recall_ks": [
+   10,
+   50,
+   300
+  ]
+ },
+ "exploratory": false,
+ "init_params": {
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "sha256": "0b1c4d0cbf85e389739c35ca14699d7faf93edc3fc203a8124695306e9adfd4d"
+ },
+ "means": {
+  "ndcg@10": 0.36087988805946525,
+  "recall@10": 0.17468362445472713,
+  "recall@300": 0.47837900991637655,
+  "recall@50": 0.2776819569041738
+ },
+ "method": "dense-hyde",
+ "n_queries": 323,
+ "name": "query-rewrite-hyde",
+ "prediction": {
+  "commit": "f0aae73136439f1a7494c868b226e2357cd7ebac",
+  "file": "query-rewrite-hyde.md"
+ },
+ "repo": {
+  "commit": "1a9b678369142fd7da1da1f948811246790b3f9e",
+  "dirty": false
+ },
+ "schema": 1,
+ "scores_file": "query-rewrite-hyde.json",
+ "scores_sha256": "be4ba8c1f896207d93bdc3070d91704067aee21a9661de6a54282c9d0b2986d1",
+ "versions": {
+  "datasets": "5.0.0",
+  "numpy": "2.5.1",
+  "python": "3.12.9",
+  "ragexp": "0.1.0",
+  "rank-bm25": "0.2.2",
+  "sentence-transformers": "5.6.0",
+  "torch": "2.13.0"
+ }
+}
